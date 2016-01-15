@@ -1960,6 +1960,31 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
             }
             pThis->m_szSpecFileName[0] = 0;
         }
+
+
+        //mod
+        //ドライバが変更された
+        {
+          // BonDriver_Pipe以外なら等速に戻す
+          TCHAR path[MAX_PATH];
+          pThis->m_pApp->GetDriverName(path, _countof(path));
+          LPCTSTR name = ::PathFindFileName(path);
+
+          if (::lstrcmpi(name, TEXT("BonDriver_UDP.dll")) &&
+            ::lstrcmpi(name, TEXT("BonDriver_Pipe.dll")) &&
+            ::lstrcmpi(name, TEXT("BonDriver_File.dll")))
+          {
+            // 等速に戻す
+            ASFilterSendNotifyMessage(WM_ASFLT_STRETCH, 0, MAKELPARAM(100, 100));
+            pThis->m_tsSender.SetSpeed(100, 100);
+          }
+
+
+
+        }
+
+
+
         break;
     case TVTest::EVENT_CHANNELCHANGE:
         // チャンネルが変更された
