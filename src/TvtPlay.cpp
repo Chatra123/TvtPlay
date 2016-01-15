@@ -800,6 +800,22 @@ bool CTvtPlay::EnablePlugin(bool fEnable) {
             m_hwndFrame = NULL;
         }
     }
+
+
+    //mod
+    if (InitializePlugin())
+    {
+      if (fEnable) {
+        //TVTestの初期設定値を記録
+        m_IniSetting_AlwaysOnTop = m_pApp->GetAlwaysOnTop();
+        m_pApp->SetAlwaysOnTop(!IsPaused());
+      }
+      else {
+        //無効にされたら、初期設定に戻す
+        m_pApp->SetAlwaysOnTop(m_IniSetting_AlwaysOnTop);
+      }
+    }
+
     return true;
 }
 
@@ -906,7 +922,16 @@ HWND CTvtPlay::GetFullscreenWindow()
 // ダイアログ選択でファイルを開く
 bool CTvtPlay::OpenWithDialog()
 {
-    if (m_fDialogOpen) return false;
+    //if (m_fDialogOpen) return false;
+
+
+    //mod
+    if (m_fDialogOpen)
+    {
+      m_pApp->SetAlwaysOnTop(false);
+      return false;
+    }
+
 
     HWND hwndOwner = GetFullscreenWindow();
     if (!hwndOwner) hwndOwner = m_pApp->GetAppWindow();
@@ -1353,6 +1378,10 @@ int CTvtPlay::TrackPopup(HMENU hmenu, const POINT &pt, UINT flags)
 // プレイリストの現在位置のファイルを開く
 bool CTvtPlay::OpenCurrent(int offset, int stretchID)
 {
+  //mod
+  if (!m_playlist.Get().empty() == false)
+    m_pApp->SetAlwaysOnTop(false);
+
     return !m_playlist.Get().empty() ? Open(m_playlist.Get()[m_playlist.GetPosition()].path, offset, stretchID) : false;
 }
 
@@ -1414,6 +1443,10 @@ bool CTvtPlay::Open(LPCTSTR fileName, int offset, int stretchID)
     m_hThreadEvent = ::CreateEvent(NULL, TRUE, FALSE, NULL);
     if (!m_hThreadEvent) {
         m_tsSender.Close();
+
+        //mod
+        m_pApp->SetAlwaysOnTop(false);
+
         return false;
     }
     m_hThread = reinterpret_cast<HANDLE>(_beginthreadex(NULL, 0, TsSenderThread, this, 0, NULL));
@@ -1421,6 +1454,10 @@ bool CTvtPlay::Open(LPCTSTR fileName, int offset, int stretchID)
         ::CloseHandle(m_hThreadEvent);
         m_hThreadEvent = NULL;
         m_tsSender.Close();
+
+        //mod
+        m_pApp->SetAlwaysOnTop(false);
+
         return false;
     }
     if (m_threadPriority >= THREAD_PRIORITY_LOWEST &&
@@ -1478,6 +1515,12 @@ bool CTvtPlay::Open(LPCTSTR fileName, int offset, int stretchID)
     ::PostThreadMessage(m_threadID, WM_TS_INIT_DONE, 0, 0);
 
     m_pApp->StatusItemNotify(1, TVTest::STATUS_ITEM_NOTIFY_REDRAW);
+
+
+    //mod
+    m_pApp->SetAlwaysOnTop(true);
+
+
     return true;
 }
 
@@ -1530,6 +1573,12 @@ void CTvtPlay::Close()
         // 再生情報を初期化する
         UpdateInfos();
         m_pApp->StatusItemNotify(1, TVTest::STATUS_ITEM_NOTIFY_REDRAW);
+
+
+        //mod
+        m_pApp->SetAlwaysOnTop(false);
+
+
     }
 }
 
@@ -1573,6 +1622,12 @@ void CTvtPlay::WaitAndPostToSender(UINT Msg, WPARAM wParam, LPARAM lParam, bool 
 void CTvtPlay::Pause(bool fPause)
 {
     WaitAndPostToSender(WM_TS_PAUSE, fPause, 0, false);
+
+
+    ///mod
+    m_pApp->SetAlwaysOnTop(!fPause);
+
+
 }
 
 void CTvtPlay::SeekToBegin()
@@ -1979,7 +2034,18 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
             pThis->m_tsSender.SetSpeed(100, 100);
           }
 
-
+          // BonDriver_Pipe以外なら最前面に
+          if (::lstrcmpi(name, TEXT("BonDriver_UDP.dll")) &&
+            ::lstrcmpi(name, TEXT("BonDriver_Pipe.dll")) &&
+            ::lstrcmpi(name, TEXT("BonDriver_File.dll")))
+          {
+            pThis->m_pApp->SetAlwaysOnTop(true);
+          }
+          else
+          {
+            // BonDriver_Pipeに戻された
+            pThis->m_pApp->SetAlwaysOnTop(!pThis->IsPaused());
+          }
 
         }
 
@@ -2025,10 +2091,16 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
         }
         pThis->EnablePluginByDriverName();
         if (pThis->m_pApp->IsPluginEnabled()) {
+
+            //mod
+            bool fileOpened = false;
+
             // コマンドラインにパスが指定されていれば開く
             if (pThis->m_szSpecFileName[0]) {
                 if (pThis->m_playlist.PushBackListOrFile(pThis->m_szSpecFileName, true) >= 0) {
-                    pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
+
+                  //mod
+                  fileOpened = pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
                 }
                 pThis->m_szSpecFileName[0] = 0;
             }
@@ -2036,6 +2108,10 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
             if (pThis->m_fRaisePriority && pThis->m_pApp->GetVersion() < TVTest::MakeVersion(0,8,1)) {
                 ::SetThreadPriority(::GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
             }
+
+            //mod
+            pThis->m_pApp->SetAlwaysOnTop(fileOpened);
+
         }
         break;
     case TVTest::EVENT_STATUSITEM_DRAW:

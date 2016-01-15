@@ -102,6 +102,11 @@ private:
     bool m_fShowOpenDialog;
     bool m_fRaisePriority;
 
+
+    //mod
+    bool m_IniSetting_AlwaysOnTop;
+
+
     // コントロール
     HWND m_hwndFrame;
     bool m_fSeekDrawOfs, m_fSeekDrawTot, m_fPosDrawTot;
