@@ -1678,6 +1678,41 @@ void CTvtPlay::BeginWatchingNextChapter(bool fDoDelay)
             // 直近の終了チャプターかスキップ開始チャプターを監視する
             // 監視位置は必ずposより大きくする(でないと即座にWM_SATISFIED_POS_GTが呼ばれてしまう)
             int pos = GetPosition();
+
+            //mod
+            //０秒にシークしたときにスキップ処理を適用する。
+            //　０秒にシークするとpos=1300が返されるので c-0dix- が処理できない。
+            //　2000以下に最初のスキップがあれば適用し、
+            //　スキップ先が 2000以下だとループするので_2nd_posを考慮する。
+            if (0 <= pos && pos < 2000)
+            {
+              bool _1st_IsIn = false, _2nd_IsOut = false;
+              int _1st_pos = 0, _2nd_pos = 0;
+              {
+                auto it = m_chapter.Get().begin();
+                if (it != m_chapter.Get().end())
+                {
+                  _1st_IsIn = it->second.IsIn() && it->second.IsX();
+                  _1st_pos = it->first;
+                }
+
+                it++;
+                if (it != m_chapter.Get().end())
+                {
+                  _2nd_IsOut = it->second.IsOut() && it->second.IsX();
+                  _2nd_pos = it->first;
+                }
+              }
+
+              if (m_fSkipXChapter && _1st_IsIn && _2nd_IsOut)
+                if (_1st_pos < 2000 && 4000 < _2nd_pos)
+                {
+                  ::PostThreadMessage(m_threadID, WM_TS_WATCH_POS_GT, 0, _1st_pos + m_supposedDispDelay );
+                  return;
+                }
+            }
+
+
             if (pos >= 0) {
                 std::map<int, CChapterMap::CHAPTER>::const_iterator it = m_chapter.Get().upper_bound(pos);
                 for (; it != m_chapter.Get().end(); ++it) {
@@ -2090,12 +2125,10 @@ void CTvtPlay::SetWidthPositionItem()
     時間表示が  0:00:00/2:5...  になるのを修正
 
     tvtplay.ini  StatusItemWidth=-1 なら再生位置アイテムの幅を計算するが、
-    m_pApp->GetStatusItemInfo(&info)が falseを返すので計算できずMinWidthが適用される。
-
+    m_pApp->GetStatusItemInfo(&info)が falseを返すので計算できず MinWidthが適用される。
 
     pItem->SetWidth(80);
         0:01:30/2:50:00                 current / duration
-
 
     pItem->SetWidth(130);
        tvtplay.ini  DispTotOnStatus = 1
