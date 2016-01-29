@@ -53,12 +53,35 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
         if (itHover != chMap.end() && itHover->first >= chapPosR) itHover = chMap.end();
     }
     // シーク位置を描画するかどうか
-    bool fDrawPos = itHover != chMap.end() || (m_seekMode==0 && fMouseOnBar);
+    bool fDraw_ChapTime = itHover != chMap.end() || (m_seekMode==0 && fMouseOnBar);
+
+
+    //mod
+    //  fDraw_ChapTime  : チャプターのPos表示           chap▼の上にカーソルがあるか？
+    //  fDraw_BarTime   : シーク先のPos表示             シークバーの直上にカーソルがあるか？
+    //  fMouseOnBarArea : シークバーの色を薄色にする    シークバー＆チャプター表示エリア上にカーソルがあるか？
+    bool fDraw_BarTime;
+    {
+      fDraw_BarTime = m_pStatus->GetCurItem() == m_ID;
+      fDraw_BarTime &= rcBar.left < mousePos.x && mousePos.x < rcBar.right;
+      fDraw_BarTime &= rcBar.top < mousePos.y;
+    }
+    bool fMouseOnBarArea;
+    {
+      RECT rect;
+      m_pStatus->GetItemRect(m_ID, &rect);
+      fMouseOnBarArea = m_pStatus->GetCurItem() == m_ID;
+      fMouseOnBarArea &= rect.left <= mousePos.x && mousePos.x <= rect.right;
+      fMouseOnBarArea &= rect.top <= mousePos.y && mousePos.y <= rect.bottom;
+    }
 
     // シーク位置を描画
     int drawPosWidth = 64;
     int drawPosX = 0;
-    if (fDrawPos) {
+
+    //mod
+    if (fDraw_ChapTime || fDraw_BarTime) {
+    //if (fDrawPos) {
         TCHAR szText[256], szOfsText[64], szTotText[64], szChName[16];
         // マウスホバー中のチャプター位置もしくはマウス位置
         int posSec = itHover != chMap.end() ? itHover->first / 1000 :
@@ -70,11 +93,11 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
             TCHAR sign = ofsSec < 0 ? TEXT('-') : TEXT('+');
             if (ofsSec < 0) ofsSec = -ofsSec;
             if (ofsSec < 60)
-                ::wsprintf(szOfsText, TEXT("%c%d"), sign, ofsSec);
+                ::wsprintf(szOfsText, TEXT(" %c%d"), sign, ofsSec);
             else if (ofsSec < 3600)
-                ::wsprintf(szOfsText, TEXT("%c%d:%02d"), sign, ofsSec/60, ofsSec%60);
+                ::wsprintf(szOfsText, TEXT(" %c%d:%02d"), sign, ofsSec/60, ofsSec%60);
             else
-                ::wsprintf(szOfsText, TEXT("%c%d:%02d:%02d"), sign, ofsSec/60/60, ofsSec/60%60, ofsSec%60);
+                ::wsprintf(szOfsText, TEXT(" %c%d:%02d:%02d"), sign, ofsSec/60/60, ofsSec/60%60, ofsSec%60);
         }
         szTotText[0] = 0;
         if (m_fDrawTot) {
@@ -89,36 +112,127 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
             ::lstrcpyn(szChName+1, &itHover->second.name.front(), _countof(szChName)-1);
         }
         if (posSec < 3600 && dur < 3600000) {
+
             ::wsprintf(szText, TEXT("%02d:%02d%s%s%s"), posSec/60%60, posSec%60, szOfsText, szTotText, szChName);
+
+            //mod
+            // szTextを cur posで上書き
+            if (fDraw_BarTime) ::wsprintf(szText, TEXT(" %02d:%02d "), posSec / 60 % 60, posSec % 60);
+
         }
         else {
+
             ::wsprintf(szText, TEXT("%d:%02d:%02d%s%s%s"), posSec/60/60, posSec/60%60, posSec%60, szOfsText, szTotText, szChName);
+
+            //mod
+            // szTextを cur posで上書き
+            if (fDraw_BarTime) ::wsprintf(szText, TEXT(" %d:%02d:%02d "), posSec / 60 / 60, posSec / 60 % 60, posSec % 60);
         }
+
+
+
+
+        ////// シーク位置の描画に必要な幅を取得する
+        ////::SetRectEmpty(&rc);
+        ////if (::DrawText(hdc, szText, -1, &rc,
+        ////               DT_LEFT | DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX | DT_CALCRECT))
+        ////{
+        ////    drawPosWidth = rc.right - rc.left + 10;
+        ////}
+        ////drawPosX = min(mousePos.x + 5, rcBar.right - drawPosWidth - 1);
+
+        ////// バーを描画
+        ////::SetRect(&rc, drawPosX+1, rcBar.top, min(max(barX, drawPosX+1), drawPosX+drawPosWidth-1), rcBar.bottom);
+        ////DrawUtil::Fill(hdc, &rc, MixColor(crText, crBk, 48));
+        ////rc.left = min(max(barX - 5, drawPosX+1), drawPosX+drawPosWidth-1);
+        ////DrawUtil::FillGradient(hdc, &rc, MixColor(crText, crBk, 48), MixColor(crText, crBk, 192));
+
+        ////// シーク位置を描画
+        ////::SetRect(&rc, drawPosX + 5, pRect->top, drawPosX + drawPosWidth, pRect->bottom);
+        ////::DrawText(hdc, szText, -1, &rc, DT_LEFT | DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX);
+
+
+        //mod
+        /*
+        　変更点
+        　・シーク位置の時間表示を大きく
+        　・シークバー上で時間を表示
+        　・時間表示と重なるシークバーは細線で描画
+        */
+        //シークバー
+        //フォント、少し太い文字
+        /* 細　FW_REGULAR, FW_MEDIUM, FW_SEMIBOLD, FW_DEMIBOLD, FW_BOLD, FW_EXTRABOLD　太 */
+        HFONT hFont = CreateFont(
+            pRect->top - pRect->bottom,  //フォント高さ
+            0,                           //文字幅
+            0,                           //テキストの角度
+            0,                           //ベースラインとｘ軸との角度
+            FW_SEMIBOLD,                 //フォントの重さ（太さ）
+            FALSE,                       //イタリック体
+            FALSE,                       //アンダーライン
+            FALSE,                       //打ち消し線
+            SHIFTJIS_CHARSET,            //文字セット
+            OUT_DEFAULT_PRECIS,          //出力精度
+            CLIP_DEFAULT_PRECIS,         //クリッピング精度
+            PROOF_QUALITY,               //出力品質
+            FIXED_PITCH | FF_MODERN,     //ピッチとファミリー
+            L"メイリオ");                //書体名
+
+        //set new font & get old font
+        HGDIOBJ hFontOld = SelectObject(hdc, hFont);
+
         // シーク位置の描画に必要な幅を取得する
         ::SetRectEmpty(&rc);
         if (::DrawText(hdc, szText, -1, &rc,
-                       DT_LEFT | DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX | DT_CALCRECT))
+          DT_LEFT | DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX | DT_CALCRECT))
         {
-            drawPosWidth = rc.right - rc.left + 10;
+          drawPosWidth = rc.right - rc.left + 10;
         }
-        drawPosX = min(mousePos.x + 5, rcBar.right - drawPosWidth - 1);
 
-        // バーを描画
-        ::SetRect(&rc, drawPosX+1, rcBar.top, min(max(barX, drawPosX+1), drawPosX+drawPosWidth-1), rcBar.bottom);
-        DrawUtil::Fill(hdc, &rc, MixColor(crText, crBk, 48));
-        rc.left = min(max(barX - 5, drawPosX+1), drawPosX+drawPosWidth-1);
-        DrawUtil::FillGradient(hdc, &rc, MixColor(crText, crBk, 48), MixColor(crText, crBk, 192));
+        //描画位置
+        //  マウス、描画位置の間のスペース
+        const int spc = 20;
+        //  drawPos_RightSideOfCursor  or  drawPos_LeftSideOfCursor
+        bool draw_RSide = mousePos.x + spc + drawPosWidth < rcBar.right;
+        bool draw_LSide = rcBar.left < mousePos.x - spc - drawPosWidth;
+        //　左側にマウスと重ねて表示できるか？
+        //  チャプター時刻表示のときだけ、バー時刻表示のときはシークバー先端と重なるので無視。
+        bool draw_LSide_time = rcBar.left < mousePos.x - 60;
 
-        // シーク位置を描画
-        ::SetRect(&rc, drawPosX + 5, pRect->top, drawPosX + drawPosWidth, pRect->bottom);
+        drawPosX = draw_RSide ? mousePos.x + spc
+          : draw_LSide ? mousePos.x - spc - drawPosWidth
+          : draw_LSide_time && !fDraw_BarTime ? mousePos.x - 60
+          : mousePos.x + spc;
+
+        /*
+          実際のハイライト背景色の取得はしない。
+            auto crStatusHighlightBack = m_pApp->GetColor(L"StatusHighlightBack");
+        */
+        //時刻表示と重なるシークバー
+        COLORREF crText_a128 = MixColor(crText, crBk, 128);
+        ::SetRect(&rc, drawPosX + 1, rcBar.top - 1, min(max(barX, drawPosX + 1), drawPosX + drawPosWidth - 1), rcBar.bottom - 3);
+        DrawUtil::Fill(hdc, &rc, crText_a128);
+
+        //時刻表示
+        ::SetRect(&rc, drawPosX + 5, pRect->top + 5, drawPosX + drawPosWidth, pRect->bottom + 5);
         ::DrawText(hdc, szText, -1, &rc, DT_LEFT | DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX);
+        SelectObject(hdc, hFontOld);
     }
 
-    // バーを描画
+
+    //mod
+    //fDrawPos=trueなら時刻表示位置を避けて描画される
+    bool fDraw_Time = fDraw_ChapTime || fDraw_BarTime;
+
+    //バー、チャプターエリア上にカーソルがあれば薄色にする
+    crText = fMouseOnBarArea ? MixColor(crText, crBk, 128) : crText;
+    crBar = fMouseOnBarArea ? MixColor(crBar, crBk, 128) : crBar;
+
+    // シークバー
     rc = rcBar;
-    rc.right = fDrawPos ? min(barX, drawPosX - 2) : barX;
+    rc.right = fDraw_Time ? min(barX, drawPosX - 2) : barX;
     DrawUtil::Fill(hdc, &rc, crBar);
-    if (fDrawPos && barX >= drawPosX + drawPosWidth + 2) {
+    if (fDraw_Time && barX >= drawPosX + drawPosWidth + 2) {
         rc.left = drawPosX + drawPosWidth + 2;
         rc.right = barX;
         DrawUtil::Fill(hdc, &rc, crBar);
@@ -134,13 +248,13 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
         }
     }
 
-    // バーの外枠を描画
+    // シークバー外枠
     HPEN hpen = ::CreatePen(PS_SOLID, 1, crText);
     if (hpen) {
         HPEN hpenOld = SelectPen(hdc, hpen);
         HBRUSH hbrOld = SelectBrush(hdc, ::GetStockObject(NULL_BRUSH));
         ::SetRect(&rc, rcBar.left - 2, rcBar.top - 2, rcBar.right + 2, rcBar.bottom + 2);
-        if (fDrawPos) {
+        if (fDraw_Time) {
             ::Rectangle(hdc, rc.left, rc.top, drawPosX, rc.bottom);
             ::Rectangle(hdc, drawPosX + drawPosWidth, rc.top, rc.right, rc.bottom);
         }
