@@ -1,5 +1,5 @@
 ﻿
-## Tvtplay_mod
+## TvtPlay_mod
 
 TVTest pluginのTvtPlayの改変版
 
@@ -13,7 +13,7 @@ TVTest pluginのTvtPlayの改変版
 
 　c-1000dix-1100dox-2000dix-2100dox-3000dix-0eox-c  
 　通常なら dix, dox を順に移動するところを dox 間のみ移動します。  
-　dixへの移動はできません。
+　ＣＭ開始チャプターへの移動はできません。
   
   
 * ”SeekA”　→　”＋１０秒シーク、スキップチャプター直前のみスキップ”  
@@ -27,16 +27,18 @@ TVTest pluginのTvtPlayの改変版
 ![SeekA動作](./TvtPlay_mod_SeekA.png)
 
 
-
 * シークバーの表示変更
 
 ![SeekBar表示](./TvtPlay_mod_SeekBar.png)
 
 
-
 * ”常に前面に表示”　→　”再生中のみ前面に表示”  
 　に置き換え  
 
+
+* コマンドラインに.ts .tslist等があれば再生するようにした。  
+  従来よりもプラグイン、ドライバを自動で有効にする範囲を拡大  
+  
 
 * ドライバ切り替え時に再生速度を１．０倍速に戻す。
 
@@ -45,7 +47,7 @@ TVTest pluginのTvtPlayの改変版
 -------------------------------------------------------------------------
 ### fork  
 
-xtne6f/TvtPlay　workplus branch  
+xtne6f/TvtPlay　work-plus branch  
 <https://github.com/xtne6f/TvtPlay>  
 
       
