@@ -1376,7 +1376,7 @@ int CTvtPlay::TrackPopup(HMENU hmenu, const POINT &pt, UINT flags)
 bool CTvtPlay::OpenCurrent(int offset, int stretchID)
 {
   //mod
-  if (!m_playlist.Get().empty() == false)
+  if (m_playlist.Get().empty())
     m_pApp->SetAlwaysOnTop(false);
 
     return !m_playlist.Get().empty() ? Open(m_playlist.Get()[m_playlist.GetPosition()].path, offset, stretchID) : false;
@@ -2214,12 +2214,14 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
             ::lstrcmpi(name, TEXT("BonDriver_Pipe.dll")) &&
             ::lstrcmpi(name, TEXT("BonDriver_File.dll")))
           {
-            pThis->m_pApp->SetAlwaysOnTop(true);
+            if (pThis->m_pApp->IsPluginEnabled())
+              pThis->m_pApp->SetAlwaysOnTop(true);
           }
           else
           {
             // BonDriver_Pipeに戻された
-            pThis->m_pApp->SetAlwaysOnTop(!pThis->IsPaused());
+            if (pThis->m_pApp->IsPluginEnabled())
+              pThis->m_pApp->SetAlwaysOnTop(!pThis->IsPaused());
           }
 
         }
