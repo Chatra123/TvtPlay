@@ -2266,29 +2266,80 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
             if (pThis->m_fForceEnable) pThis->m_pApp->EnablePlugin(true);
             pThis->m_fEventStartupDone = true;
         }
-        pThis->EnablePluginByDriverName();
-        if (pThis->m_pApp->IsPluginEnabled()) {
 
-            //mod
-            bool fileOpened = false;
-
+        //mod
+        if (pThis->m_fForceEnable == false)
+        {
+          pThis->EnablePluginByDriverName();
+          if (pThis->m_pApp->IsPluginEnabled()) {
             // コマンドラインにパスが指定されていれば開く
             if (pThis->m_szSpecFileName[0]) {
-                if (pThis->m_playlist.PushBackListOrFile(pThis->m_szSpecFileName, true) >= 0) {
-
-                  //mod
-                  fileOpened = pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
-                }
-                pThis->m_szSpecFileName[0] = 0;
+              if (pThis->m_playlist.PushBackListOrFile(pThis->m_szSpecFileName, true) >= 0) {
+                pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
+              }
+              pThis->m_szSpecFileName[0] = 0;
             }
+            else
+              //mod
+              /*
+                pThis->m_fForceEnable==falseならファイルパスが指定されていないので
+                必ずelseが実行される。
+              */
+              pThis->m_pApp->SetAlwaysOnTop(false);
+
             // 起動時フリーズ対策(仮)
-            if (pThis->m_fRaisePriority && pThis->m_pApp->GetVersion() < TVTest::MakeVersion(0,8,1)) {
-                ::SetThreadPriority(::GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
+            if (pThis->m_fRaisePriority && pThis->m_pApp->GetVersion() < TVTest::MakeVersion(0, 8, 1)) {
+              ::SetThreadPriority(::GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
             }
+          }
+        }
 
-            //mod
-            pThis->m_pApp->SetAlwaysOnTop(fileOpened);
+        //mod 
+        /*
+        ・ＴＳファイルパスだけでプラグインを自動で有効にする。
+        パスがあればAnalyzeCommandLine()関数内で m_fForceEnable = true になっている。
 
+        ・コマンドラインの /tvtplay が必要なくなる。
+        ・case TVTest::EVENT_EXECUTE:から FALL THROUGH!でも実行される。
+        多重起動禁止のTVTestから送られるコマンドラインでも
+        再生されるようになる。
+        */
+        if (pThis->m_fForceEnable)
+        {
+          if (pThis->m_pApp->IsPluginEnabled() == false)
+            pThis->m_pApp->EnablePlugin(true);
+
+          bool opened = false;
+          if (pThis->m_szSpecFileName[0]) {
+            if (pThis->m_playlist.PushBackListOrFile(pThis->m_szSpecFileName, true) >= 0) {
+              opened = pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
+            }
+            pThis->m_szSpecFileName[0] = 0;
+          }
+
+          //BonDriver_Pipeに変更
+          TCHAR path[MAX_PATH];
+          pThis->m_pApp->GetDriverName(path, _countof(path));
+          LPCTSTR name = ::PathFindFileName(path);
+          if (::lstrcmpi(name, TEXT("BonDriver_UDP.dll"))
+            && ::lstrcmpi(name, TEXT("BonDriver_Pipe.dll")))
+          {
+            bool set = pThis->m_pApp->SetDriverName(TEXT("BonDriver_Pipe.dll"));
+            if (set)
+            {
+              TVTest::ChannelInfo chInfo;
+              if (!pThis->m_pApp->GetCurrentChannelInfo(&chInfo)) {
+                pThis->m_pApp->AddLog(L"SetChannel");
+                for (int ch = 0; ch < 10; ch++) {
+                  if (pThis->m_pApp->SetChannel(0, ch)) break;
+                }
+              }
+            }
+          }
+          //AlwaysOnTop再設定
+          //  case TVTest::EVENT_DRIVERCHANGE:で
+          //　SetAlwaysOnTop(!pThis->IsPaused());にしているので再設定
+          pThis->m_pApp->SetAlwaysOnTop(opened);
         }
         break;
     case TVTest::EVENT_STATUSITEM_DRAW:
