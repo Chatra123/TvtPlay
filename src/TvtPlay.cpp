@@ -1840,43 +1840,37 @@ void CTvtPlay::OnCommand(int id, const POINT *pPt, UINT flags)
         else SeekToEnd();
         break;
 
+    ////case ID_COMMAND_SEEK_PREV:
+    ////  if (!m_chapter.Get().empty()) {
+    ////    int pos = GetPosition();
+    ////    if (pos >= 3000) {
+    ////      // 再生中の連続ジャンプを考慮して多めに戻す
+    ////      std::map<int, CChapterMap::CHAPTER>::const_iterator it = m_chapter.Get().lower_bound(pos - 3000);
+    ////      if (it != m_chapter.Get().begin()) SeekAbsolute((--it)->first);
+    ////    }
+    ////  }
+    ////  break;
 
+    ////case ID_COMMAND_SEEK_NEXT:
+    ////  if (!m_chapter.Get().empty()) {
+    ////    int pos = GetPosition();
+    ////    if (pos >= 0) {
+    ////      std::map<int, CChapterMap::CHAPTER>::const_iterator it = m_chapter.Get().lower_bound(pos + 1000);
+    ////      if (it != m_chapter.Get().end()) SeekAbsolute(it->first);
+    ////    }
+    ////  }
+    ////  break;
 
-
-
-
-        ////case ID_COMMAND_SEEK_PREV:
-        ////  if (!m_chapter.Get().empty()) {
-        ////    int pos = GetPosition();
-        ////    if (pos >= 3000) {
-        ////      // 再生中の連続ジャンプを考慮して多めに戻す
-        ////      std::map<int, CChapterMap::CHAPTER>::const_iterator it = m_chapter.Get().lower_bound(pos - 3000);
-        ////      if (it != m_chapter.Get().begin()) SeekAbsolute((--it)->first);
-        ////    }
-        ////  }
-        ////  break;
-
-
-        ////case ID_COMMAND_SEEK_NEXT:
-        ////  if (!m_chapter.Get().empty()) {
-        ////    int pos = GetPosition();
-        ////    if (pos >= 0) {
-        ////      std::map<int, CChapterMap::CHAPTER>::const_iterator it = m_chapter.Get().lower_bound(pos + 1000);
-        ////      if (it != m_chapter.Get().end()) SeekAbsolute(it->first);
-        ////    }
-        ////  }
-        ////  break;
-
-        //mod
+    //mod
+    //前の本編開始チャプターへシーク
     case ID_COMMAND_SEEK_PREV://ID_COMMAND_SEEK_PREV_MAIN
       if (!m_chapter.Get().empty()) {
         int pos = GetPosition();
         if (pos >= 3000) {
           // 再生中の連続ジャンプを考慮して多めに戻す
-          std::map<int, CChapterMap::CHAPTER>::const_iterator it = m_chapter.Get().lower_bound(pos - 3000);
-
+          std::map<int, CChapterMap::CHAPTER>::const_iterator
+            it = m_chapter.Get().lower_bound(pos - 3000);
           --it;
-
           // "cix"なら無視、前の "cox"または、"c"までジャンプ
           for (;;)
           {
@@ -1885,75 +1879,74 @@ void CTvtPlay::OnCommand(int id, const POINT *pPt, UINT flags)
             else if (it->second.IsIn()) --it;
             else break;
           }
-
-          if (it != m_chapter.Get().end()) SeekAbsolute((it)->first);
-          else SeekAbsolute(0); //チャプターがなければ先端へ移動
+          if (it != m_chapter.Get().end())
+            SeekAbsolute((it)->first);
+          else
+            SeekAbsolute(0); //チャプターがなければ始端へ移動
         }
       }
       break;
 
-      //mod
-      case ID_COMMAND_SEEK_NEXT://ID_COMMAND_SEEK_NEXT_MAIN
-        if (!m_chapter.Get().empty()) {
-          int pos = GetPosition();
-          if (pos >= 0) {
-            std::map<int, CChapterMap::CHAPTER>::const_iterator it = m_chapter.Get().lower_bound(pos + 1000);
-
-            // "cix"なら無視、次の "cox"または、"c"までジャンプ
-            for (;;)
-            {
-              if (it == m_chapter.Get().end()) break;
-              if (it->second.IsIn()) ++it;
-              else break;
-            }
-
-            if (it != m_chapter.Get().end()) SeekAbsolute(it->first);
-            else SeekAbsolute(CChapterMap::CHAPTER_POS_MAX); //チャプターがなければ終端へ移動
-          }
-        }
-        break;
-
-   
     //mod
-    case ID_COMMAND_SEEK_A ://ID_COMMAND_SEEK_NEXT_MAIN_TYPE3
-          /*
-            基本は＋１０秒シーク、スキップチャプター直前はスキップ
-
-          ＜スキップチャプター中間＞
-          ・次の本編開始までスキップ
-
-          ＜スキップチャプター前後＞
-          ・通常は＋１０秒シーク、
-          ・スキップチャプター直前（３０秒前）なら次の本編開始までスキップ
-
-          ＜短い間隔でスキップチャプターが多くある場所の動作＞
-          ・スキップチャプター直前（３０秒前）であっても、スキップの直後（３０秒間）と重なると＋１０秒シーク
-
-          ＜コード＞
-          ・次のチャプターがcoxならスキップチャプター中間
-          ・次のチャプターがcixで３０秒以内
-          　　＆　直前のcoxから３０秒以上離れている　ならスキップ
-          ・それ以外　＋１０秒シーク
-          ・it->second.IsX()はチェックしていない
-          */
+    //次の本編開始チャプターへシーク
+    case ID_COMMAND_SEEK_NEXT://ID_COMMAND_SEEK_NEXT_MAIN
       if (!m_chapter.Get().empty()) {
         int pos = GetPosition();
         if (pos >= 0) {
+          std::map<int, CChapterMap::CHAPTER>::const_iterator it = m_chapter.Get().lower_bound(pos + 1000);
+          
+          // "cix"なら無視、次の "cox"または、"c"までジャンプ
+          for (;;)
+          {
+            if (it == m_chapter.Get().end()) break;
+            if (it->second.IsIn()) ++it;
+            else break;
+          }
+          if (it != m_chapter.Get().end())
+            SeekAbsolute(it->first);
+          else
+            SeekAbsolute(CChapterMap::CHAPTER_POS_MAX); //チャプターがなければ終端へ移動
+        }
+      }
+      break;
 
-          int dstpos = pos + 10 * 1000;
+
+    //mod
+    case ID_COMMAND_SEEK_A://ID_COMMAND_SEEK_NEXT_MAIN_TYPE2
+      /*
+        基本は＋１０秒シーク、スキップチャプター直前はスキップ
+
+        ＜スキップチャプター中間＞
+        ・本編開始までスキップ
+
+        ＜スキップチャプター前後＞
+        ・通常は＋１０秒シーク、
+        ・スキップチャプター直前（３０秒前）なら次の本編開始までスキップ
+
+        ＜短い間隔でスキップチャプターが多くある場所の動作＞
+        ・スキップチャプター直前（３０秒前）であっても、スキップの直後（３０秒間）と重なると＋１０秒シーク
+
+        ＜メモ＞
+        ・  cix : スキップ元
+        ・  cox : スキップ先
+        ・  c   : 通常のチャプター
+        ・it->second.IsX()はチェックしていない
+      */
+      if (!m_chapter.Get().empty()) {
+        int pos = GetPosition();
+        if (pos >= 0) {
           int next_cox_pos = -1;
-          bool nextIs_cox = false;
-          bool nextIs_cix = false, prevIs_cox = false;
+          bool nextIs_cox = false, nextIs_cix = false;
+          bool prevIs_cox = false;
 
           //次のチャプター取得
           std::map<int, CChapterMap::CHAPTER>::const_iterator it = m_chapter.Get().lower_bound(pos + 1000);
-
           if (it != m_chapter.Get().end())
           {
             if (it->second.IsOut())
-              nextIs_cox = true;
+              nextIs_cox = true;  //スキップチャプター中間
             else if (it->second.IsIn() && (it->first - pos) < 30 * 1000)
-              nextIs_cix = true;
+              nextIs_cix = true;  //次がcix ＆ 30sec離れている。
           }
 
           //次の本編開始チャプターcox取得
@@ -1967,21 +1960,26 @@ void CTvtPlay::OnCommand(int id, const POINT *pPt, UINT flags)
           //直前のチャプター取得
           it = m_chapter.Get().lower_bound(pos + 1000);
           --it;
-
           if (it != m_chapter.Get().end())
           {
-            if (it->second.IsOut() && 30 * 1000 < (pos - it->first ) )
-              prevIs_cox = true;
+            if (it->second.IsOut() && 30 * 1000 < (pos - it->first))
+              prevIs_cox = true;  //前がcox ＆ 30sec離れている。
           }
 
-          //スキップさせるか？
+          //シーク
+          int dstpos;
           if (m_fSkipXChapter)
           {
             if (nextIs_cox)
               dstpos = next_cox_pos;
             else if (nextIs_cix && prevIs_cox)
               dstpos = next_cox_pos;
+            else
+              dstpos = pos + 10 * 1000;
           }
+          else
+            dstpos = pos + 10 * 1000;
+
           SeekAbsolute(dstpos);
         }
       }
@@ -1991,9 +1989,6 @@ void CTvtPlay::OnCommand(int id, const POINT *pPt, UINT flags)
         Seek(10 * 1000);
       }
       break;
-
-
-
 
 
     case ID_COMMAND_ADD_CHAPTER:
