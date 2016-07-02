@@ -105,6 +105,7 @@ private:
 
     //mod
     bool m_fIniSetting_AlwaysOnTop;
+    bool m_fAutoPause_onDriverChanged;
 
 
     // コントロール

@@ -1583,10 +1583,8 @@ void CTvtPlay::Pause(bool fPause)
 {
     WaitAndPostToSender(WM_TS_PAUSE, fPause, 0, false);
 
-
     ///mod
     m_pApp->SetAlwaysOnTop(!fPause);
-
 
 }
 
@@ -2184,33 +2182,43 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
         //mod
         //ドライバが変更された
         {
-          // BonDriver_Pipe以外なら等速に戻す
+
           TCHAR path[MAX_PATH];
           pThis->m_pApp->GetDriverName(path, _countof(path));
           LPCTSTR name = ::PathFindFileName(path);
 
+          // BonDriver_Pipe以外に変更
           if (::lstrcmpi(name, TEXT("BonDriver_UDP.dll")) &&
             ::lstrcmpi(name, TEXT("BonDriver_Pipe.dll")))
           {
             // 等速に戻す
             ASFilterSendNotifyMessage(WM_ASFLT_STRETCH, 0, MAKELPARAM(100, 100));
             pThis->m_tsSender.SetSpeed(100, 100);
-          }
 
-          // BonDriver_Pipe以外なら最前面に
-          if (::lstrcmpi(name, TEXT("BonDriver_UDP.dll")) &&
-            ::lstrcmpi(name, TEXT("BonDriver_Pipe.dll")))
-          {
+            //最前面に
             if (pThis->m_pApp->IsPluginEnabled())
               pThis->m_pApp->SetAlwaysOnTop(true);
+
+            //再生中なら一時停止
+            if (!pThis->IsPaused())
+            {
+              pThis->Pause(true);
+              pThis->m_fAutoPause_onDriverChanged = true;
+            }
           }
-          else
+          else // BonDriver_Pipeに変更
           {
-            // BonDriver_Pipeに戻された
+            //最前面に
             if (pThis->m_pApp->IsPluginEnabled())
               pThis->m_pApp->SetAlwaysOnTop(!pThis->IsPaused());
-          }
 
+            //再生再開
+            if (pThis->m_fAutoPause_onDriverChanged)
+            {
+              pThis->Pause(false);
+              pThis->m_fAutoPause_onDriverChanged = false;
+            }
+          }
         }
 
 
