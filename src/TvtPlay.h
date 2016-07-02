@@ -104,7 +104,7 @@ private:
 
 
     //mod
-    bool m_IniSetting_AlwaysOnTop;
+    bool m_fIniSetting_AlwaysOnTop;
 
 
     // コントロール
