@@ -807,12 +807,12 @@ bool CTvtPlay::EnablePlugin(bool fEnable) {
     {
       if (fEnable) {
         //TVTestの初期設定値を記録
-        m_IniSetting_AlwaysOnTop = m_pApp->GetAlwaysOnTop();
+        m_fIniSetting_AlwaysOnTop = m_pApp->GetAlwaysOnTop();
         m_pApp->SetAlwaysOnTop(!IsPaused());
       }
       else {
         //無効にされたら、初期設定に戻す
-        m_pApp->SetAlwaysOnTop(m_IniSetting_AlwaysOnTop);
+        m_pApp->SetAlwaysOnTop(m_fIniSetting_AlwaysOnTop);
       }
     }
 
@@ -922,16 +922,7 @@ HWND CTvtPlay::GetFullscreenWindow()
 // ダイアログ選択でファイルを開く
 bool CTvtPlay::OpenWithDialog()
 {
-    //if (m_fDialogOpen) return false;
-
-
-    //mod
-    if (m_fDialogOpen)
-    {
-      m_pApp->SetAlwaysOnTop(false);
-      return false;
-    }
-
+    if (m_fDialogOpen) return false;
 
     HWND hwndOwner = GetFullscreenWindow();
     if (!hwndOwner) hwndOwner = m_pApp->GetAppWindow();
@@ -2209,13 +2200,16 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
         }
         pThis->m_fEventExecute = false;
 
-        // コマンドラインにパスが指定されていれば開く
-        if (pThis->m_pApp->IsPluginEnabled() && pThis->m_szSpecFileName[0]) {
-            if (pThis->m_playlist.PushBackListOrFile(pThis->m_szSpecFileName, true) >= 0) {
-                pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
-            }
-            pThis->m_szSpecFileName[0] = 0;
-        }
+        //mod
+        //EVENT_STARTUPDONEでファイルを開くようにしたのでのでここはコメントアウト
+
+        //// コマンドラインにパスが指定されていれば開く
+        //if (pThis->m_pApp->IsPluginEnabled() && pThis->m_szSpecFileName[0]) {
+        //    if (pThis->m_playlist.PushBackListOrFile(pThis->m_szSpecFileName, true) >= 0) {
+        //        pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
+        //    }
+        //    pThis->m_szSpecFileName[0] = 0;
+        //}
 
 
         //mod
@@ -2227,8 +2221,7 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
           LPCTSTR name = ::PathFindFileName(path);
 
           if (::lstrcmpi(name, TEXT("BonDriver_UDP.dll")) &&
-            ::lstrcmpi(name, TEXT("BonDriver_Pipe.dll")) &&
-            ::lstrcmpi(name, TEXT("BonDriver_File.dll")))
+            ::lstrcmpi(name, TEXT("BonDriver_Pipe.dll")))
           {
             // 等速に戻す
             ASFilterSendNotifyMessage(WM_ASFLT_STRETCH, 0, MAKELPARAM(100, 100));
@@ -2237,8 +2230,7 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
 
           // BonDriver_Pipe以外なら最前面に
           if (::lstrcmpi(name, TEXT("BonDriver_UDP.dll")) &&
-            ::lstrcmpi(name, TEXT("BonDriver_Pipe.dll")) &&
-            ::lstrcmpi(name, TEXT("BonDriver_File.dll")))
+            ::lstrcmpi(name, TEXT("BonDriver_Pipe.dll")))
           {
             if (pThis->m_pApp->IsPluginEnabled())
               pThis->m_pApp->SetAlwaysOnTop(true);
@@ -2293,32 +2285,23 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
             pThis->m_fEventStartupDone = true;
         }
 
-        //mod
-        if (pThis->m_fForceEnable == false)
-        {
-          pThis->EnablePluginByDriverName();
-          if (pThis->m_pApp->IsPluginEnabled()) {
-            // コマンドラインにパスが指定されていれば開く
-            if (pThis->m_szSpecFileName[0]) {
-              if (pThis->m_playlist.PushBackListOrFile(pThis->m_szSpecFileName, true) >= 0) {
-                pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
-              }
-              pThis->m_szSpecFileName[0] = 0;
-            }
-            else
-              //mod
-              /*
-                pThis->m_fForceEnable==falseならファイルパスが指定されていないので
-                必ずelseが実行される。
-              */
-              pThis->m_pApp->SetAlwaysOnTop(false);
+        // mod コメントアウト
+        //pThis->EnablePluginByDriverName();
+        //  if (pThis->m_pApp->IsPluginEnabled()) {
+        //    // コマンドラインにパスが指定されていれば開く
+        //    if (pThis->m_szSpecFileName[0]) {
+        //      if (pThis->m_playlist.PushBackListOrFile(pThis->m_szSpecFileName, true) >= 0) {
+        //        pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
+        //      }
+        //      pThis->m_szSpecFileName[0] = 0;
+        //    }
 
-            // 起動時フリーズ対策(仮)
-            if (pThis->m_fRaisePriority && pThis->m_pApp->GetVersion() < TVTest::MakeVersion(0, 8, 1)) {
-              ::SetThreadPriority(::GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
-            }
-          }
-        }
+        //    // 起動時フリーズ対策(仮)
+        //    if (pThis->m_fRaisePriority && pThis->m_pApp->GetVersion() < TVTest::MakeVersion(0, 8, 1)) {
+        //      ::SetThreadPriority(::GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
+        //    }
+        //  }
+
 
         //mod 
         /*
@@ -2334,14 +2317,6 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
         {
           if (pThis->m_pApp->IsPluginEnabled() == false)
             pThis->m_pApp->EnablePlugin(true);
-
-          bool opened = false;
-          if (pThis->m_szSpecFileName[0]) {
-            if (pThis->m_playlist.PushBackListOrFile(pThis->m_szSpecFileName, true) >= 0) {
-              opened = pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
-            }
-            pThis->m_szSpecFileName[0] = 0;
-          }
 
           //BonDriver_Pipeに変更
           TCHAR path[MAX_PATH];
@@ -2362,11 +2337,25 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
               }
             }
           }
+
+          bool opened = false;
+          if (pThis->m_szSpecFileName[0]) {
+            if (pThis->m_playlist.PushBackListOrFile(pThis->m_szSpecFileName, true) >= 0) {
+              opened = pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
+            }
+            pThis->m_szSpecFileName[0] = 0;
+          }
+
           //AlwaysOnTop再設定
           //  case TVTest::EVENT_DRIVERCHANGE:で
           //　SetAlwaysOnTop(!pThis->IsPaused());にしているので再設定
-          pThis->m_pApp->SetAlwaysOnTop(opened);
+          //pThis->m_pApp->SetAlwaysOnTop(opened);
         }
+
+
+
+
+
         break;
     case TVTest::EVENT_STATUSITEM_DRAW:
         // ステータス項目の描画
