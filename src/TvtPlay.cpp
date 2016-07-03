@@ -2319,14 +2319,6 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
             }
           }
 
-
-          //bool opened = false;
-          //if (pThis->m_szSpecFileName[0]) {
-          //  if (pThis->m_playlist.PushBackListOrFile(pThis->m_szSpecFileName, true) >= 0) {
-          //    opened = pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
-          //  }
-          //  pThis->m_szSpecFileName[0] = 0;
-          //}
           bool opened = false;
           if (pThis->m_szSpecFileName[0]) {
             if (pThis->m_playlist.PushBackListOrFile_AutoPlay(pThis->m_szSpecFileName, true) >= 0) {
@@ -2335,14 +2327,7 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
             pThis->m_szSpecFileName[0] = 0;
           }
 
-
-          //AlwaysOnTop再設定
-          //  case TVTest::EVENT_DRIVERCHANGE:で
-          //　SetAlwaysOnTop(!pThis->IsPaused());にしているので再設定
-          //pThis->m_pApp->SetAlwaysOnTop(opened);
         }
-
-
 
 
 
