@@ -2318,12 +2318,11 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
         //mod 
         /*
         ・ＴＳファイルパスだけでプラグインを自動で有効にする。
-        パスがあればAnalyzeCommandLine()関数内で m_fForceEnable = true になっている。
+          パスがあればAnalyzeCommandLine()関数内で m_fForceEnable = true になっている。
 
         ・コマンドラインの /tvtplay が必要なくなる。
         ・case TVTest::EVENT_EXECUTE:から FALL THROUGH!でも実行される。
-        多重起動禁止のTVTestから送られるコマンドラインでも
-        再生されるようになる。
+          多重起動禁止のTVTestから送られるコマンドラインでも再生されるようになる。
         */
         if (pThis->m_fForceEnable)
         {
@@ -2350,14 +2349,6 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
             }
           }
 
-
-          //bool opened = false;
-          //if (pThis->m_szSpecFileName[0]) {
-          //  if (pThis->m_playlist.PushBackListOrFile(pThis->m_szSpecFileName, true) >= 0) {
-          //    opened = pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
-          //  }
-          //  pThis->m_szSpecFileName[0] = 0;
-          //}
           bool opened = false;
           if (pThis->m_szSpecFileName[0]) {
             if (pThis->m_playlist.PushBackListOrFile_AutoPlay(pThis->m_szSpecFileName, true) >= 0) {
@@ -2366,14 +2357,7 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
             pThis->m_szSpecFileName[0] = 0;
           }
 
-
-          //AlwaysOnTop再設定
-          //  case TVTest::EVENT_DRIVERCHANGE:で
-          //　SetAlwaysOnTop(!pThis->IsPaused());にしているので再設定
-          //pThis->m_pApp->SetAlwaysOnTop(opened);
         }
-
-
 
 
 
