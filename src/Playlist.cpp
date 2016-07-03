@@ -35,6 +35,7 @@ int CPlaylist::PushBackListOrFile(LPCTSTR path, bool fMovePos)
     return pos;
 }
 
+
 // プレイリストファイルを再生リストに加える
 int CPlaylist::PushBackList(LPCTSTR fullPath)
 {
@@ -83,6 +84,105 @@ int CPlaylist::PushBackList(LPCTSTR fullPath)
     }
     return pos;
 }
+
+
+
+
+
+
+
+
+//mod
+// FolderAutoPlay
+// フォルダ内のファイルを加える。
+// 個人的に利用していないのでOpenDialogからは呼んでいない。 
+//
+// 成功: 加えられた位置, 失敗: 負
+int CPlaylist::PushBackListOrFile_AutoPlay(LPCTSTR path, bool fMovePos)
+{
+  //存在しないファイルを追加しようとしたときに
+  //ファイルチェックしないとフォルダ内のファイルだけが追加されることになる。
+  if (PathFileExists(path) == FALSE)
+    return 0;
+
+  // カレントからの絶対パスに変換
+  TCHAR fullPath[MAX_PATH];
+  DWORD rv = ::GetFullPathName(path, _countof(fullPath), fullPath, NULL);
+  if (rv == 0 || rv >= MAX_PATH) return -1;
+
+  int pos = -1;
+  if (IsPlayListFile(path)) {
+    // プレイリストファイルとして処理
+    pos = PushBackList(fullPath);
+  }
+  else {
+    // フォルダ内のファイルを再生リストに加える
+    ClearWithoutCurrent();
+    EraseCurrent();
+
+    pos = PushBack_CollectedFiles(fullPath);
+  }
+  if (fMovePos && pos >= 0) m_pos = pos;
+  return pos;
+}
+
+// フォルダ内のファイルを再生リストに加える
+#include<TCHAR.H>    //::_tcsicmp(...);
+int CPlaylist::PushBack_CollectedFiles(LPCTSTR fullPath)
+{
+  TCHAR dirName[MAX_PATH];
+  ::lstrcpyn(dirName, fullPath, _countof(dirName));
+  ::PathRemoveFileSpec(dirName);
+
+  //検索パターン
+  TCHAR pattern[MAX_PATH];
+  PathCombine(pattern, dirName, TEXT("*.ts"));
+
+  // 検索
+  HANDLE hFind;
+  WIN32_FIND_DATA fd;
+  hFind = FindFirstFile(pattern, &fd);
+  if (hFind == INVALID_HANDLE_VALUE) {
+    return -1;  // 失敗
+  }
+
+  //ファイル名の列挙
+  do {
+    if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+      && !(fd.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN))
+    {
+      PLAY_INFO pi;
+      if (!::PathCombine(pi.path, dirName, fd.cFileName)) pi.path[0] = 0;
+      if (::PathFileExists(pi.path)) {
+        m_list.emplace_back(pi);
+      }
+    }
+  } while (FindNextFile(hFind, &fd)); //次のファイルを検索
+
+  Sort(CPlaylist::SORT_ASC);
+
+  //fullPathを探し、プレイリストの再生位置に設定
+  int pos = -1;
+  for (size_t i = 0; i < m_list.size(); i++)
+  {
+    if (::_tcsicmp(m_list[i].path, fullPath) == 0)
+      pos = i;
+  }
+
+  return pos;
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 // 現在位置のPLAY_INFOを前に移動する
 bool CPlaylist::MoveCurrentToPrev()
@@ -156,35 +256,92 @@ void CPlaylist::ClearWithoutCurrent()
     }
 }
 
-// 現在位置を前に移動する
-// 移動できなければfalseを返す
+//// 現在位置を前に移動する
+//// 移動できなければfalseを返す
+//bool CPlaylist::Prev(bool fLoop)
+//{
+//    if (fLoop && !m_list.empty() && m_pos == 0) {
+//        m_pos = m_list.size() - 1;
+//        return true;
+//    }
+//    else if (m_pos != 0) {
+//        --m_pos;
+//        return true;
+//    }
+//    return false;
+//}
+//
+//// 現在位置を次に移動する
+//// 移動できなければfalseを返す
+//bool CPlaylist::Next(bool fLoop)
+//{
+//  if (fLoop && !m_list.empty() && m_pos + 1 >= m_list.size()) {
+//    m_pos = 0;
+//    return true;
+//  }
+//  else if (m_pos+1 < m_list.size()) {
+//      ++m_pos;
+//      return true;
+//  }
+//  return false;
+//}
+
+
+
+//mod
+// 現在位置を移動する
+//   fLoopのときはコード簡略化のため whileでループさせない。
+//   ファイルチェックもしていない。
 bool CPlaylist::Prev(bool fLoop)
 {
-    if (fLoop && !m_list.empty() && m_pos == 0) {
-        m_pos = m_list.size() - 1;
-        return true;
-    }
-    else if (m_pos != 0) {
-        --m_pos;
-        return true;
-    }
-    return false;
+  if (fLoop && !m_list.empty() && m_pos == 0) {
+    m_pos = m_list.size() - 1;
+    return true;
+  }
+
+  while (m_pos != 0)
+  {
+    --m_pos;
+    if (PathFileExists(m_list[m_pos].path))
+      return true;
+  }
+  return false;
 }
 
-// 現在位置を次に移動する
-// 移動できなければfalseを返す
 bool CPlaylist::Next(bool fLoop)
 {
-    if (fLoop && !m_list.empty() && m_pos+1 >= m_list.size()) {
-        m_pos = 0;
-        return true;
-    }
-    else if (m_pos+1 < m_list.size()) {
-        ++m_pos;
-        return true;
-    }
-    return false;
+  if (fLoop && !m_list.empty() && m_pos + 1 >= m_list.size()) {
+    m_pos = 0;
+    return true;
+  }
+
+  while (m_pos + 1 < m_list.size())
+  {
+    ++m_pos;
+    if (PathFileExists(m_list[m_pos].path))
+      return true;
+  }
+  return false;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // 文字列として出力する
 int CPlaylist::ToString(TCHAR *pStr, int max, bool fFileNameOnly) const

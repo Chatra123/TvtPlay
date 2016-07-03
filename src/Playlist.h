@@ -25,11 +25,25 @@ public:
     const std::vector<PLAY_INFO>& Get() const { return m_list; }
     static bool IsPlayListFile(LPCTSTR path);
     static bool IsMediaFile(LPCTSTR path);
+
+
 private:
     int PushBackList(LPCTSTR fullPath);
     std::vector<PLAY_INFO> m_list;
     // 現在位置。m_list.size()未満、ただしempty()のとき0
     size_t m_pos;
+
+
+
+
+    //mod
+public:
+    int PushBackListOrFile_AutoPlay(LPCTSTR path, bool fMovePos);
+private:
+    int PushBack_CollectedFiles(LPCTSTR fullPath);
+
+
+
 };
 
 #endif

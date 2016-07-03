@@ -1029,7 +1029,11 @@ bool CTvtPlay::OpenWithPopup(const POINT &pt, UINT flags)
         ::PathRemoveFileSpec(pattern) &&
         ::PathCombine(fileName, pattern, nameList[skipSize+selID-1]))
     {
-        return m_playlist.PushBackListOrFile(fileName, true) >= 0 ? OpenCurrent() : false;
+        //return m_playlist.PushBackListOrFile(fileName, true) >= 0 ? OpenCurrent() : false;
+
+        //mod
+        return m_playlist.PushBackListOrFile_AutoPlay(fileName, true) >= 0 ? OpenCurrent() : false;
+
     }
     return false;
 }
@@ -2315,13 +2319,22 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
             }
           }
 
+
+          //bool opened = false;
+          //if (pThis->m_szSpecFileName[0]) {
+          //  if (pThis->m_playlist.PushBackListOrFile(pThis->m_szSpecFileName, true) >= 0) {
+          //    opened = pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
+          //  }
+          //  pThis->m_szSpecFileName[0] = 0;
+          //}
           bool opened = false;
           if (pThis->m_szSpecFileName[0]) {
-            if (pThis->m_playlist.PushBackListOrFile(pThis->m_szSpecFileName, true) >= 0) {
+            if (pThis->m_playlist.PushBackListOrFile_AutoPlay(pThis->m_szSpecFileName, true) >= 0) {
               opened = pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
             }
             pThis->m_szSpecFileName[0] = 0;
           }
+
 
           //AlwaysOnTop再設定
           //  case TVTest::EVENT_DRIVERCHANGE:で
@@ -2437,13 +2450,40 @@ BOOL CALLBACK CTvtPlay::WindowMsgCallback(HWND hwnd, UINT uMsg, WPARAM wParam, L
             bool fAdded = false;
             TCHAR fileName[MAX_PATH];
             int num = ::DragQueryFile((HDROP)wParam, 0xFFFFFFFF, fileName, _countof(fileName));
-            for (int i = 0; i < num; ++i) {
-                if (::DragQueryFile((HDROP)wParam, i, fileName, _countof(fileName)) != 0 &&
-                    (CPlaylist::IsPlayListFile(fileName) || CPlaylist::IsMediaFile(fileName)))
-                {
-                    if (pThis->m_playlist.PushBackListOrFile(fileName, !fAdded) >= 0) fAdded = true;
-                }
+
+
+            //for (int i = 0; i < num; ++i) {
+            //  if (::DragQueryFile((HDROP)wParam, i, fileName, _countof(fileName)) != 0 &&
+            //    (CPlaylist::IsPlayListFile(fileName) || CPlaylist::IsMediaFile(fileName)))
+            //  {
+            //    if (pThis->m_playlist.PushBackListOrFile(fileName, !fAdded) >= 0) fAdded = true;
+            //  }
+            //}
+
+
+            //mod
+            //　ファイルが１つ　-->  フォルダ内のファイル収集
+            //  複数 or list    -->  ドロップされたアイテムを追加
+            if (num == 1)
+            {
+              if (::DragQueryFile((HDROP)wParam, 0, fileName, _countof(fileName)) != 0 &&
+                 CPlaylist::IsMediaFile(fileName))
+              if (pThis->m_playlist.PushBackListOrFile_AutoPlay(fileName, !fAdded) >= 0)
+                fAdded = true;
             }
+            else
+            { 
+              for (int i = 0; i < num; ++i) {
+                if (::DragQueryFile((HDROP)wParam, i, fileName, _countof(fileName)) != 0 &&
+                  (CPlaylist::IsPlayListFile(fileName) || CPlaylist::IsMediaFile(fileName)))
+                {
+                  if (pThis->m_playlist.PushBackListOrFile(fileName, !fAdded) >= 0)
+                    fAdded = true;
+                }
+              }
+            }
+
+
             // 少なくとも1ファイルが再生リストに追加されればそのファイルを開く
             if (fAdded) pThis->OpenCurrent();
             // DragFinish()せずに本体のデフォルトプロシージャに任せる
