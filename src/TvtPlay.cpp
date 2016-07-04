@@ -2287,12 +2287,11 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
         //mod 
         /*
         ・ＴＳファイルパスだけでプラグインを自動で有効にする。
-        パスがあればAnalyzeCommandLine()関数内で m_fForceEnable = true になっている。
+          パスがあればAnalyzeCommandLine()関数内で m_fForceEnable = true になっている。
 
         ・コマンドラインの /tvtplay が必要なくなる。
         ・case TVTest::EVENT_EXECUTE:から FALL THROUGH!でも実行される。
-        多重起動禁止のTVTestから送られるコマンドラインでも
-        再生されるようになる。
+          多重起動禁止のTVTestから送られるコマンドラインでも再生されるようになる。
         */
         if (pThis->m_fForceEnable)
         {

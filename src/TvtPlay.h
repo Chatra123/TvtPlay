@@ -104,6 +104,7 @@ private:
 
 
     //mod
+    // 初期パラメータ
     bool m_fIniSetting_AlwaysOnTop;
     bool m_fAutoPause_onDriverChanged;
 
