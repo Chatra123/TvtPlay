@@ -1019,6 +1019,20 @@ bool CTvtPlay::OpenWithPopup(const POINT &pt, UINT flags)
     int selID = 0;
     HMENU hmenu = ::CreatePopupMenu();
     if (hmenu) {
+
+        //mod
+        //フォルダ名
+        TCHAR folderName[MAX_PATH];
+        {
+          ::lstrcpy(folderName, pattern);
+          ::PathRemoveFileSpec(folderName);
+          ::PathStripPath(folderName);
+        }
+        if (hFind != INVALID_HANDLE_VALUE)
+          ::AppendMenu(hmenu, MF_STRING | MF_GRAYED, 0, folderName);
+
+
+
         if (listSize <= 0) {
             ::AppendMenu(hmenu, MF_STRING | MF_GRAYED, 0, TEXT("(なし)"));
         }
@@ -1032,6 +1046,13 @@ bool CTvtPlay::OpenWithPopup(const POINT &pt, UINT flags)
                     if (*p == TEXT('&')) *p = TEXT('_');
                 ::AppendMenu(hmenu, MF_STRING, i + 1, str);
             }
+
+            //mod
+            //リストの最後に空行挿入
+            //  - 空行を選択するとリストを非表示にできる。
+            //  - ボタンを２回押したときにすぐにファイル選択をしないようにする。
+            //    デスクトップ下部だとバーのボタンとリストが重なる。
+            ::AppendMenu(hmenu, MF_STRING, 0, L"");
         }
         selID = TrackPopup(hmenu, pt, flags);
         ::DestroyMenu(hmenu);
@@ -1064,7 +1085,13 @@ bool CTvtPlay::OpenWithPlayListPopup(const POINT &pt, UINT flags)
             hmenu = ::GetSubMenu(hTopMenu, 1);
         }
         else {
-            hmenu = ::GetSubMenu(hTopMenu, 0);
+            //mod off
+            //hmenu = ::GetSubMenu(hTopMenu, 0);
+            //mod
+            //プレイリスト操作のコマンドはメニューにいれない
+            hmenu = ::CreatePopupMenu();
+            ::AppendMenu(hmenu, MF_STRING | MF_GRAYED, 0, L"Playlist");
+
             std::vector<CPlaylist::PLAY_INFO>::const_iterator it = m_playlist.Get().begin();
             for (int cmdID = 1; it != m_playlist.Get().end() && cmdID <= 10000; ++cmdID, ++it) {
                 TCHAR str[64];
@@ -1081,8 +1108,15 @@ bool CTvtPlay::OpenWithPlayListPopup(const POINT &pt, UINT flags)
                 mi.fState = cmdID-1==(int)m_playlist.GetPosition() ? MFS_DEFAULT | MFS_CHECKED : 0;
                 mi.fType = MFT_STRING | MFT_RADIOCHECK;
                 mi.dwTypeData = str;
-                ::InsertMenuItem(hmenu, cmdID - 1, TRUE, &mi);
+
+                //mod off
+                // ::InsertMenuItem(hmenu, cmdID - 1, TRUE, &mi);
+                //mod 
+                ::InsertMenuItem(hmenu, cmdID, TRUE, &mi);
             }
+            //mod
+            //リストの最後に空行挿入
+            ::AppendMenu(hmenu, MF_STRING, 0, L"");
         }
         selID = TrackPopup(hmenu, pt, flags);
         ::DestroyMenu(hTopMenu);
