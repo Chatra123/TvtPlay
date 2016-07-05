@@ -1061,7 +1061,13 @@ bool CTvtPlay::OpenWithPlayListPopup(const POINT &pt, UINT flags)
             hmenu = ::GetSubMenu(hTopMenu, 1);
         }
         else {
-            hmenu = ::GetSubMenu(hTopMenu, 0);
+            //mod off
+            //hmenu = ::GetSubMenu(hTopMenu, 0);
+            //mod
+            //プレイリスト操作のコマンドはメニューにいれない
+            hmenu = ::CreatePopupMenu();
+            ::AppendMenu(hmenu, MF_STRING | MF_GRAYED, 0, L"Playlist");
+
             std::vector<CPlaylist::PLAY_INFO>::const_iterator it = m_playlist.Get().begin();
             for (int cmdID = 1; it != m_playlist.Get().end() && cmdID <= 10000; ++cmdID, ++it) {
                 TCHAR str[64];
@@ -1078,7 +1084,11 @@ bool CTvtPlay::OpenWithPlayListPopup(const POINT &pt, UINT flags)
                 mi.fState = cmdID-1==(int)m_playlist.GetPosition() ? MFS_DEFAULT | MFS_CHECKED : 0;
                 mi.fType = MFT_STRING | MFT_RADIOCHECK;
                 mi.dwTypeData = str;
-                ::InsertMenuItem(hmenu, cmdID - 1, TRUE, &mi);
+
+                //mod off
+                // ::InsertMenuItem(hmenu, cmdID - 1, TRUE, &mi);
+                //mod 
+                ::InsertMenuItem(hmenu, cmdID, TRUE, &mi);
             }
         }
         selID = TrackPopup(hmenu, pt, flags);
