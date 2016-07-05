@@ -2241,7 +2241,7 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
         }
         pThis->m_fEventExecute = false;
 
-        //mod
+        //mod off
         //EVENT_STARTUPDONEでファイルを開くようにしたのでのでここはコメントアウト
 
         //// コマンドラインにパスが指定されていれば開く
@@ -2256,7 +2256,6 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
         //mod
         //ドライバが変更された
         {
-
           TCHAR path[MAX_PATH];
           pThis->m_pApp->GetDriverName(path, _countof(path));
           LPCTSTR name = ::PathFindFileName(path);
@@ -2336,7 +2335,7 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
             pThis->m_fEventStartupDone = true;
         }
 
-        // mod コメントアウト
+        // mod off
         //pThis->EnablePluginByDriverName();
         //  if (pThis->m_pApp->IsPluginEnabled()) {
         //    // コマンドラインにパスが指定されていれば開く
@@ -2365,28 +2364,7 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
         */
         if (pThis->m_fForceEnable)
         {
-          if (pThis->m_pApp->IsPluginEnabled() == false)
-            pThis->m_pApp->EnablePlugin(true);
-
-          //BonDriver_Pipeに変更
-          TCHAR path[MAX_PATH];
-          pThis->m_pApp->GetDriverName(path, _countof(path));
-          LPCTSTR name = ::PathFindFileName(path);
-          if (::lstrcmpi(name, TEXT("BonDriver_UDP.dll"))
-            && ::lstrcmpi(name, TEXT("BonDriver_Pipe.dll")))
-          {
-            bool set = pThis->m_pApp->SetDriverName(TEXT("BonDriver_Pipe.dll"));
-            if (set)
-            {
-              TVTest::ChannelInfo chInfo;
-              if (!pThis->m_pApp->GetCurrentChannelInfo(&chInfo)) {
-                pThis->m_pApp->AddLog(L"SetChannel");
-                for (int ch = 0; ch < 10; ch++) {
-                  if (pThis->m_pApp->SetChannel(0, ch)) break;
-                }
-              }
-            }
-          }
+          pThis->ForcePluginEnable();
 
           bool opened = false;
           if (pThis->m_szSpecFileName[0]) {
