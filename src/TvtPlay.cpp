@@ -289,6 +289,13 @@ bool CTvtPlay::Initialize()
     if (!::GetModuleFileName(g_hinstDLL, m_szIniFileName, _countof(m_szIniFileName)) ||
         !::PathRenameExtension(m_szIniFileName, TEXT(".ini"))) return false;
 
+
+    //mod 
+    //TVTestにドロップ受け入れ
+    ::DragAcceptFiles(m_pApp->GetAppWindow(), TRUE);
+    m_pApp->SetWindowMessageCallback(WindowMsgCallback, this);
+
+
     // コマンドを登録
     m_pApp->RegisterCommand(COMMAND_LIST, _countof(COMMAND_LIST));
 
@@ -714,7 +721,8 @@ bool CTvtPlay::InitializePlugin()
     }
     ::DeleteDC(hdcMem);
 
-    ::DragAcceptFiles(m_pApp->GetAppWindow(), TRUE);
+    //mod off
+    //::DragAcceptFiles(m_pApp->GetAppWindow(), TRUE);
 
     m_fInitialized = true;
     return true;
@@ -766,10 +774,12 @@ bool CTvtPlay::EnablePlugin(bool fEnable) {
 #endif
         if (m_fShowOpenDialog && !m_szSpecFileName[0] && !m_pApp->GetStandby()) OpenWithDialog();
 
-        m_pApp->SetWindowMessageCallback(WindowMsgCallback, this);
+        ////mod off
+        //m_pApp->SetWindowMessageCallback(WindowMsgCallback, this);
     }
     else {
-        m_pApp->SetWindowMessageCallback(NULL, NULL);
+        ////mod off
+        //m_pApp->SetWindowMessageCallback(NULL, NULL);
         Close();
 #ifdef EN_SWC
         if (m_captionAnalyzer.IsInitialized()) {
@@ -1739,6 +1749,35 @@ void CTvtPlay::EnablePluginByDriverName()
 }
 
 
+void CTvtPlay::ForcePluginEnable()
+{
+  if (m_pApp->IsPluginEnabled() == false)
+    m_pApp->EnablePlugin(true);
+
+  //BonDriver_Pipeに変更
+  TCHAR path[MAX_PATH];
+  m_pApp->GetDriverName(path, _countof(path));
+  LPCTSTR name = ::PathFindFileName(path);
+  if (::lstrcmpi(name, TEXT("BonDriver_UDP.dll"))
+    && ::lstrcmpi(name, TEXT("BonDriver_Pipe.dll"))) {
+
+    bool set = m_pApp->SetDriverName(TEXT("BonDriver_Pipe.dll"));
+    if (set) {
+      TVTest::ChannelInfo chInfo;
+      if (!m_pApp->GetCurrentChannelInfo(&chInfo)) {
+        m_pApp->AddLog(L"SetChannel");
+        for (int ch = 0; ch < 10; ch++) {
+          if (m_pApp->SetChannel(0, ch)) break;
+        }
+      }
+    }
+
+  }
+}
+
+
+
+
 void CTvtPlay::OnPreviewChange(bool fPreview)
 {
     if (!fPreview) {
@@ -2414,6 +2453,7 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
 }
 
 
+
 // ウィンドウメッセージコールバック関数
 // TRUEを返すとTVTest側でメッセージを処理しなくなる
 // WM_CREATEは呼ばれない
@@ -2436,6 +2476,7 @@ BOOL CALLBACK CTvtPlay::WindowMsgCallback(HWND hwnd, UINT uMsg, WPARAM wParam, L
             int num = ::DragQueryFile((HDROP)wParam, 0xFFFFFFFF, fileName, _countof(fileName));
 
 
+            //mod off
             //for (int i = 0; i < num; ++i) {
             //  if (::DragQueryFile((HDROP)wParam, i, fileName, _countof(fileName)) != 0 &&
             //    (CPlaylist::IsPlayListFile(fileName) || CPlaylist::IsMediaFile(fileName)))
@@ -2446,26 +2487,37 @@ BOOL CALLBACK CTvtPlay::WindowMsgCallback(HWND hwnd, UINT uMsg, WPARAM wParam, L
 
 
             //mod
-            //　ファイルが１つ　-->  フォルダ内のファイル収集
-            //  複数 or list    -->  ドロップされたアイテムを追加
-            if (num == 1)
-            {
-              if (::DragQueryFile((HDROP)wParam, 0, fileName, _countof(fileName)) != 0 &&
-                 CPlaylist::IsMediaFile(fileName))
-              if (pThis->m_playlist.PushBackListOrFile_AutoPlay(fileName, !fAdded) >= 0)
-                fAdded = true;
+            //dropされたファイルのチェック
+            int media_num = 0;
+            for (int i = 0; i < num; ++i) {
+              if (::DragQueryFile((HDROP)wParam, i, fileName, _countof(fileName)) != 0 &&
+                (CPlaylist::IsPlayListFile(fileName) || CPlaylist::IsMediaFile(fileName))) {
+                media_num++;
+              }
             }
-            else
-            { 
-              for (int i = 0; i < num; ++i) {
-                if (::DragQueryFile((HDROP)wParam, i, fileName, _countof(fileName)) != 0 &&
-                  (CPlaylist::IsPlayListFile(fileName) || CPlaylist::IsMediaFile(fileName)))
+            
+            for (int i = 0; i < num; ++i) {
+              if (::DragQueryFile((HDROP)wParam, i, fileName, _countof(fileName)) != 0 &&
+                (CPlaylist::IsPlayListFile(fileName) || CPlaylist::IsMediaFile(fileName))) {
+
+                //　mediaが１つ   -->  フォルダ内のファイル収集
+                //  複数 or list  -->  ドロップされたファイルのみ追加
+                if (media_num == 1) {
+                  if (pThis->m_playlist.PushBackListOrFile_AutoPlay(fileName, !fAdded) >= 0)
+                    fAdded = true;
+                }
+                else
                 {
                   if (pThis->m_playlist.PushBackListOrFile(fileName, !fAdded) >= 0)
                     fAdded = true;
                 }
+
               }
             }
+
+            //プラグインの自動有効化
+            if (fAdded)
+              pThis->ForcePluginEnable();
 
 
             // 少なくとも1ファイルが再生リストに追加されればそのファイルを開く

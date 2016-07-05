@@ -87,6 +87,17 @@ private:
     void RemoveStreamCallback();
     static BOOL CALLBACK StreamCallback(BYTE *pData, void *pClientData);
 
+
+    //mod
+    void ForcePluginEnable();
+
+    //mod
+    // 初期パラメータ
+    bool m_fIniSetting_AlwaysOnTop;
+    bool m_fAutoPause_onDriverChanged;
+
+
+
     // 初期パラメータ
     bool m_fInitialized;
     bool m_fSettingsLoaded;
@@ -101,12 +112,6 @@ private:
     int m_specStretchID;
     bool m_fShowOpenDialog;
     bool m_fRaisePriority;
-
-
-    //mod
-    // 初期パラメータ
-    bool m_fIniSetting_AlwaysOnTop;
-    bool m_fAutoPause_onDriverChanged;
 
 
     // コントロール
