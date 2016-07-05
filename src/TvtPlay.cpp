@@ -1016,6 +1016,20 @@ bool CTvtPlay::OpenWithPopup(const POINT &pt, UINT flags)
     int selID = 0;
     HMENU hmenu = ::CreatePopupMenu();
     if (hmenu) {
+
+        //mod
+        //フォルダ名
+        TCHAR folderName[MAX_PATH];
+        {
+          ::lstrcpy(folderName, pattern);
+          ::PathRemoveFileSpec(folderName);
+          ::PathStripPath(folderName);
+        }
+        if (hFind != INVALID_HANDLE_VALUE)
+          ::AppendMenu(hmenu, MF_STRING | MF_GRAYED, 0, folderName);
+
+
+
         if (listSize <= 0) {
             ::AppendMenu(hmenu, MF_STRING | MF_GRAYED, 0, TEXT("(なし)"));
         }
