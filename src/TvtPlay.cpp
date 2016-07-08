@@ -288,9 +288,15 @@ bool CTvtPlay::Initialize()
 
 
     //mod 
+    //  OnDriverChanged　最前面表示の判定にPause()を使用しているので
+    //  初期値をいれておく。
+    m_fInfoPaused = true;
+    m_fAutoPause_onDriverChanged = false;
+
     //TVTestにドロップ受け入れ
     ::DragAcceptFiles(m_pApp->GetAppWindow(), TRUE);
     m_pApp->SetWindowMessageCallback(WindowMsgCallback, this);
+
 
 
     // コマンドを登録
@@ -813,16 +819,13 @@ bool CTvtPlay::EnablePlugin(bool fEnable) {
 
 
     //mod
-    if (InitializePlugin())
-    {
+    //TVTestの初期設定値を記録
+    if (InitializePlugin()){
       if (fEnable) {
-        //TVTestの初期設定値を記録
-        m_fIniSetting_AlwaysOnTop = m_pApp->GetAlwaysOnTop();
-        m_pApp->SetAlwaysOnTop(!IsPaused());
+        m_fIniState_AlwaysOnTop = m_pApp->GetAlwaysOnTop();
       }
       else {
-        //無効にされたら、初期設定に戻す
-        m_pApp->SetAlwaysOnTop(m_fIniSetting_AlwaysOnTop);
+        m_pApp->SetAlwaysOnTop(m_fIniState_AlwaysOnTop);
       }
     }
 
@@ -2307,32 +2310,33 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
             ASFilterSendNotifyMessage(WM_ASFLT_STRETCH, 0, MAKELPARAM(100, 100));
             pThis->m_tsSender.SetSpeed(100, 100);
 
-            //最前面に
-            if (pThis->m_pApp->IsPluginEnabled())
-              pThis->m_pApp->SetAlwaysOnTop(true);
-
             //再生中なら一時停止
             if (!pThis->IsPaused())
             {
               pThis->Pause(true);
               pThis->m_fAutoPause_onDriverChanged = true;
             }
-          }
-          else // BonDriver_Pipeに変更
-          {
-            //最前面に
+
+            //最前面　設定を戻す
             if (pThis->m_pApp->IsPluginEnabled())
-              pThis->m_pApp->SetAlwaysOnTop(!pThis->IsPaused());
+              pThis->m_pApp->SetAlwaysOnTop(pThis->m_fIniState_AlwaysOnTop);
+
+          }
+          else //BonDriver_Pipeに変更
+          {
+            pThis->m_fIniState_AlwaysOnTop = pThis->m_pApp->GetAlwaysOnTop();
 
             //再生再開
-            if (pThis->m_fAutoPause_onDriverChanged)
-            {
-              pThis->Pause(false);
-              pThis->m_fAutoPause_onDriverChanged = false;
-            }
+            if (pThis->m_pApp->IsPluginEnabled())
+              if (pThis->m_fAutoPause_onDriverChanged)
+              {
+                pThis->Pause(false);
+                pThis->m_fAutoPause_onDriverChanged = false;
+                pThis->m_pApp->SetAlwaysOnTop(true);
+              }
+
           }
         }
-
 
 
         break;
