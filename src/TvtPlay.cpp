@@ -2505,7 +2505,7 @@ BOOL CALLBACK CTvtPlay::WindowMsgCallback(HWND hwnd, UINT uMsg, WPARAM wParam, L
             int media_num = 0;
             for (int i = 0; i < num; ++i) {
               if (::DragQueryFile((HDROP)wParam, i, fileName, _countof(fileName)) != 0 &&
-                (CPlaylist::IsPlayListFile(fileName) || CPlaylist::IsMediaFile(fileName))) {
+                CPlaylist::IsMediaFile(fileName)) {
                 media_num++;
               }
             }

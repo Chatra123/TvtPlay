@@ -112,14 +112,13 @@ int CPlaylist::PushBackListOrFile_AutoPlay(LPCTSTR path, bool fMovePos)
 
   int pos = -1;
   if (IsPlayListFile(path)) {
-    // プレイリストファイルとして処理
+    // プレイリスト
     pos = PushBackList(fullPath);
   }
   else {
-    // フォルダ内のファイルを再生リストに加える
+    // フォルダ内のファイル
     ClearWithoutCurrent();
     EraseCurrent();
-
     pos = PushBack_CollectedFiles(fullPath);
   }
   if (fMovePos && pos >= 0) m_pos = pos;
@@ -134,39 +133,44 @@ int CPlaylist::PushBack_CollectedFiles(LPCTSTR fullPath)
   ::lstrcpyn(dirName, fullPath, _countof(dirName));
   ::PathRemoveFileSpec(dirName);
 
-  //検索パターン
+  //検索
   TCHAR pattern[MAX_PATH];
   PathCombine(pattern, dirName, TEXT("*.ts"));
 
-  // 検索
   HANDLE hFind;
   WIN32_FIND_DATA fd;
   hFind = FindFirstFile(pattern, &fd);
-  if (hFind == INVALID_HANDLE_VALUE) {
+  if (hFind == INVALID_HANDLE_VALUE)
     return -1;  // 失敗
-  }
 
   //ファイル名の列挙
   do {
     if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-      && !(fd.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN))
-    {
+      && !(fd.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN)) {
       PLAY_INFO pi;
-      if (!::PathCombine(pi.path, dirName, fd.cFileName)) pi.path[0] = 0;
-      if (::PathFileExists(pi.path)) {
+      if (!::PathCombine(pi.path, dirName, fd.cFileName)) 
+        pi.path[0] = 0;
+      if (::PathFileExists(pi.path))
         m_list.emplace_back(pi);
-      }
     }
-  } while (FindNextFile(hFind, &fd)); //次のファイルを検索
+  } while (FindNextFile(hFind, &fd));
 
   Sort(CPlaylist::SORT_ASC);
 
-  //fullPathを探し、プレイリストの再生位置に設定
+  //プレイリストの再生位置を設定
   int pos = -1;
   for (size_t i = 0; i < m_list.size(); i++)
   {
     if (::_tcsicmp(m_list[i].path, fullPath) == 0)
-      pos = i;
+      pos = static_cast<int>(i);
+  }
+
+  //追加再生ファイル数の上限
+  //対象ファイル + add_file個より後は除去
+  const size_t add_file = 4;
+  for (size_t i = m_list.size() - 1; pos + add_file < i; i--)
+  {
+    m_list.pop_back();
   }
 
   return pos;
