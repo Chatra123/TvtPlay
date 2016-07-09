@@ -1043,6 +1043,13 @@ bool CTvtPlay::OpenWithPopup(const POINT &pt, UINT flags)
                     if (*p == TEXT('&')) *p = TEXT('_');
                 ::AppendMenu(hmenu, MF_STRING, i + 1, str);
             }
+
+            //mod
+            //リストの最後に空行挿入
+            //  - 空行を選択するとリストを非表示にできる。
+            //  - ボタンを２回押したときにすぐにファイル選択をしないようにする。
+            //    デスクトップ下部だとバーのボタンとリストが重なる。
+            ::AppendMenu(hmenu, MF_STRING, 0, L"");
         }
         selID = TrackPopup(hmenu, pt, flags);
         ::DestroyMenu(hmenu);
@@ -1104,6 +1111,9 @@ bool CTvtPlay::OpenWithPlayListPopup(const POINT &pt, UINT flags)
                 //mod 
                 ::InsertMenuItem(hmenu, cmdID, TRUE, &mi);
             }
+            //mod
+            //リストの最後に空行挿入
+            ::AppendMenu(hmenu, MF_STRING, 0, L"");
         }
         selID = TrackPopup(hmenu, pt, flags);
         ::DestroyMenu(hTopMenu);
