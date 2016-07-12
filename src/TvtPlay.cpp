@@ -1021,7 +1021,7 @@ bool CTvtPlay::OpenWithPopup(const POINT &pt, UINT flags)
     if (hmenu) {
 
         //mod
-        //フォルダ名
+        //フォルダ名をリストの先頭に追加
         TCHAR folderName[MAX_PATH];
         {
           ::lstrcpy(folderName, pattern);
@@ -1085,10 +1085,12 @@ bool CTvtPlay::OpenWithPlayListPopup(const POINT &pt, UINT flags)
             hmenu = ::GetSubMenu(hTopMenu, 1);
         }
         else {
+
             //mod off
             //hmenu = ::GetSubMenu(hTopMenu, 0);
+
             //mod
-            //プレイリスト操作のコマンドはメニューにいれない
+            //プレイリスト操作のコマンドはメニューから除去
             hmenu = ::CreatePopupMenu();
             ::AppendMenu(hmenu, MF_STRING | MF_GRAYED, 0, L"Playlist");
 
@@ -1110,7 +1112,7 @@ bool CTvtPlay::OpenWithPlayListPopup(const POINT &pt, UINT flags)
                 mi.dwTypeData = str;
 
                 //mod off
-                // ::InsertMenuItem(hmenu, cmdID - 1, TRUE, &mi);
+                //::InsertMenuItem(hmenu, cmdID - 1, TRUE, &mi);
                 //mod 
                 ::InsertMenuItem(hmenu, cmdID, TRUE, &mi);
             }
@@ -1662,7 +1664,7 @@ void CTvtPlay::Pause(bool fPause)
 {
     WaitAndPostToSender(WM_TS_PAUSE, fPause, 0, false);
 
-    ///mod
+    //mod
     m_pApp->SetAlwaysOnTop(!fPause);
 
 }
@@ -1813,7 +1815,10 @@ void CTvtPlay::EnablePluginByDriverName()
     }
 }
 
-
+//mod
+///
+///　プラグイン、ドライバを強制有効化
+///
 void CTvtPlay::ForcePluginEnable()
 {
   if (m_pApp->IsPluginEnabled() == false)
@@ -2400,16 +2405,13 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
         {
           pThis->ForcePluginEnable();
 
-          bool opened = false;
           if (pThis->m_szSpecFileName[0]) {
             if (pThis->m_playlist.PushBackListOrFile_AutoPlay(pThis->m_szSpecFileName, true) >= 0) {
-              opened = pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
+              pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
             }
             pThis->m_szSpecFileName[0] = 0;
           }
-
         }
-
 
 
         break;
