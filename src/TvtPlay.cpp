@@ -1945,6 +1945,7 @@ void CTvtPlay::OnCommand(int id, const POINT *pPt, UINT flags)
         else SeekToEnd();
         break;
 
+    //mod off
     ////case ID_COMMAND_SEEK_PREV:
     ////  if (!m_chapter.Get().empty()) {
     ////    int pos = GetPosition();
@@ -2021,71 +2022,87 @@ void CTvtPlay::OnCommand(int id, const POINT *pPt, UINT flags)
       /*
         基本は＋１０秒シーク、スキップチャプター直前はスキップ
 
-        ＜スキップチャプター中間＞
+        ＜スキップチャプター中間（ＣＭ中）＞
         ・本編開始までスキップ
 
         ＜スキップチャプター前後＞
         ・通常は＋１０秒シーク、
-        ・スキップチャプター直前（３０秒前）なら次の本編開始までスキップ
+        ・スキップ直前（３０秒以内）なら次の本編開始までスキップ
 
         ＜短い間隔でスキップチャプターが多くある場所の動作＞
-        ・スキップチャプター直前（３０秒前）であっても、スキップの直後（３０秒間）と重なると＋１０秒シーク
+        ・スキップ直前であっても、スキップの直後と重なると＋１０秒シーク
 
         ＜メモ＞
-        ・  cix : スキップ元
-        ・  cox : スキップ先
+        ・  cix : スキップ元　　　（本編終了チャプター）
+        ・  cox : スキップ先　　　（本編開始チャプター）
         ・  c   : 通常のチャプター
         ・it->second.IsX()はチェックしていない
       */
-      if (!m_chapter.Get().empty()) {
+      if (!m_chapter.Get().empty() && m_fSkipXChapter) {
         int pos = GetPosition();
         if (pos >= 0) {
-          int next_cox_pos = -1;
-          bool nextIs_cox = false, nextIs_cix = false;
+
+          bool nextIs_cix = false, nextIs_cox = false;
+          int len_toNextIn = -1;
+          int pos_next_cox = -1;
+          {
+            //次のチャプター情報
+            auto it = m_chapter.Get().lower_bound(pos + 1000);
+            if (it != m_chapter.Get().end())
+            {
+              nextIs_cox = it->second.IsOut();
+              nextIs_cix = it->second.IsIn();
+              len_toNextIn = nextIs_cix ? it->first - pos : -1;
+            }
+
+            //次のスキップ先取得（本編開始チャプター）
+            pos_next_cox = pos + 10 * 1000;
+            for (;;)
+            {
+              if (it == m_chapter.Get().end()) break;
+              else if (it->second.IsOut()) { pos_next_cox = it->first; break; }
+              else if (it->second.IsIn()) ++it;
+              else ++it;
+            }
+          }
+
           bool prevIs_cox = false;
-
-          //次のチャプター取得
-          std::map<int, CChapterMap::CHAPTER>::const_iterator it = m_chapter.Get().lower_bound(pos + 1000);
-          if (it != m_chapter.Get().end())
+          int len_fromPrevOut = -1;
           {
-            if (it->second.IsOut())
-              nextIs_cox = true;  //スキップチャプター中間
-            else if (it->second.IsIn() && (it->first - pos) < 30 * 1000)
-              nextIs_cix = true;  //次がcix ＆ 30sec離れている。
+            //直前のチャプター情報
+            auto it = m_chapter.Get().lower_bound(pos + 1000);
+            --it;
+            if (it != m_chapter.Get().end())
+            {
+              prevIs_cox = it->second.IsOut();
+              len_fromPrevOut = prevIs_cox ? pos - it->first : -1;
+            }
           }
 
-          //次の本編開始チャプターcox取得
-          for (;;)
+          int dst_pos;
           {
-            if (it == m_chapter.Get().end()) { next_cox_pos = pos + 10 * 1000; break; }
-            else if (it->second.IsIn()) ++it;
-            else { next_cox_pos = it->first; break; }
-          }
-
-          //直前のチャプター取得
-          it = m_chapter.Get().lower_bound(pos + 1000);
-          --it;
-          if (it != m_chapter.Get().end())
-          {
-            if (it->second.IsOut() && 30 * 1000 < (pos - it->first))
-              prevIs_cox = true;  //前がcox ＆ 30sec離れている。
-          }
-
-          //シーク
-          int dstpos;
-          if (m_fSkipXChapter)
-          {
+            //スキップチャプター中間（ＣＭ中）
             if (nextIs_cox)
-              dstpos = next_cox_pos;
-            else if (nextIs_cix && prevIs_cox)
-              dstpos = next_cox_pos;
+            {
+              dst_pos = pos_next_cox;
+            }
+            //スキップ先から30秒以内（本編開始チャプター直後）
+            else if (prevIs_cox && len_fromPrevOut < 30 * 1000)
+            {
+              // ＆ スキップ元から10+2秒以内（本編終了チャプター直前）
+              if (nextIs_cix && len_toNextIn < 12 * 1000)
+                dst_pos = pos_next_cox;
+              else
+                dst_pos = pos + 10 * 1000;
+            }
+            //スキップ元から30秒以内（本編終了チャプター直前）
+            else if (nextIs_cix && len_toNextIn < 30 * 1000)
+              dst_pos = pos_next_cox;
             else
-              dstpos = pos + 10 * 1000;
+              dst_pos = pos + 10 * 1000;
           }
-          else
-            dstpos = pos + 10 * 1000;
+          SeekAbsolute(dst_pos);
 
-          SeekAbsolute(dstpos);
         }
       }
       else
