@@ -2025,6 +2025,7 @@ void CTvtPlay::OnCommand(int id, const POINT *pPt, UINT flags)
             }
 
             //次のスキップ先取得（本編開始チャプター）
+            pos_next_cox = pos + 10 * 1000;
             for (;;)
             {
               if (it == m_chapter.Get().end()) break;
