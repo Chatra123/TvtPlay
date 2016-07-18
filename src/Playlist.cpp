@@ -93,14 +93,13 @@ int CPlaylist::PushBackList(LPCTSTR fullPath)
 
 //mod
 // FolderAutoPlay
-// フォルダ内のファイルを加える。
+// フォルダ内のファイルをプレイリストに追加
 // 個人的に利用していないのでOpenDialogからは呼んでいない。 
 //
 // 成功: 加えられた位置, 失敗: 負
 int CPlaylist::PushBackListOrFile_AutoPlay(LPCTSTR path, bool fMovePos)
 {
-  //存在しないファイルを追加しようとしたときに
-  //ファイルチェックしないとフォルダ内のファイルだけが追加されることになる。
+  //pathが存在しないとフォルダ内のファイルだけを追加してしまう。
   if (PathFileExists(path) == FALSE)
     return 0;
 
@@ -124,8 +123,9 @@ int CPlaylist::PushBackListOrFile_AutoPlay(LPCTSTR path, bool fMovePos)
   return pos;
 }
 
-// フォルダ内のファイルを再生リストに加える
 #include<TCHAR.H>    //::_tcsicmp(...);
+
+// フォルダ内のファイルをプレイリストに追加
 int CPlaylist::PushBack_CollectedFiles(LPCTSTR fullPath)
 {
   TCHAR dirName[MAX_PATH];
@@ -156,28 +156,27 @@ int CPlaylist::PushBack_CollectedFiles(LPCTSTR fullPath)
 
   Sort(CPlaylist::SORT_ASC);
 
-  //プレイリストの再生位置を設定
-  int pos = -1;
+  //fullPathのプレイリスト位置を取得
+  size_t pos = 0;
   for (size_t i = 0; i < m_list.size(); i++)
   {
     if (::_tcsicmp(m_list[i].path, fullPath) == 0)
-      pos = static_cast<int>(i);
+      pos = i;
   }
 
-  //追加再生ファイル数の上限
-  //対象ファイル + add_file個より後は除去
-  const size_t add_file = 4;
-  for (size_t i = m_list.size() - 1; pos + add_file < i; i--)
+  //対象ファイル + ２個以外は除去
+  const size_t extra = 2;
+  std::vector<PLAY_INFO> new_list;
+  for (size_t i = 0; i < m_list.size(); i++)
   {
-    m_list.pop_back();
+    if (i < pos) continue;
+    if (pos + extra < i) continue;
+    new_list.emplace_back(m_list[i]);
   }
 
-  return pos;
+  m_list = std::vector<PLAY_INFO>(new_list);
+  return 0;
 }
-
-
-
-
 
 
 
@@ -286,11 +285,11 @@ void CPlaylist::ClearWithoutCurrent()
 //}
 
 
-
 //mod
-// 現在位置を移動する
-//   fLoopのときはコード簡略化のため whileでループさせない。
-//   ファイルチェックもしていない。
+// 現在位置を前に移動する
+// 移動できなければfalseを返す
+//mod変更点
+// ファイルチェックを追加
 bool CPlaylist::Prev(bool fLoop)
 {
   if (fLoop && !m_list.empty() && m_pos == 0) {
@@ -307,6 +306,11 @@ bool CPlaylist::Prev(bool fLoop)
   return false;
 }
 
+//mod
+// 現在位置を次に移動する
+// 移動できなければfalseを返す
+//mod変更点
+// ファイルチェックを追加
 bool CPlaylist::Next(bool fLoop)
 {
   if (fLoop && !m_list.empty() && m_pos + 1 >= m_list.size()) {
@@ -322,19 +326,6 @@ bool CPlaylist::Next(bool fLoop)
   }
   return false;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
