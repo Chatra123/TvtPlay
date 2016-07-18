@@ -125,8 +125,9 @@ int CPlaylist::PushBackListOrFile_AutoPlay(LPCTSTR path, bool fMovePos)
   return pos;
 }
 
-// フォルダ内のファイルを再生リストに加える
 #include<TCHAR.H>    //::_tcsicmp(...);
+
+// フォルダ内のファイルを再生リストに加える
 int CPlaylist::PushBack_CollectedFiles(LPCTSTR fullPath)
 {
   TCHAR dirName[MAX_PATH];
@@ -157,7 +158,7 @@ int CPlaylist::PushBack_CollectedFiles(LPCTSTR fullPath)
 
   Sort(CPlaylist::SORT_ASC);
 
-  //プレイリストの再生位置を設定
+  //fullPathのプレイリスト位置を取得
   int pos = -1;
   for (size_t i = 0; i < m_list.size(); i++)
   {
@@ -165,20 +166,23 @@ int CPlaylist::PushBack_CollectedFiles(LPCTSTR fullPath)
       pos = static_cast<int>(i);
   }
 
-  //追加再生ファイル数の上限
-  //対象ファイル + add_file個より後は除去
-  const size_t add_file = 4;
-  for (size_t i = m_list.size() - 1; pos + add_file < i; i--)
+
+  //対象ファイル + extra個以外は除去
+  const size_t extra = 2;
+
+  std::vector<PLAY_INFO> new_list;
+  for (size_t i = 0; i < m_list.size(); i++)
   {
-    m_list.pop_back();
+    if (i < pos) continue;
+    if (pos + extra < i) continue;
+
+    new_list.emplace_back(m_list[i]);
   }
 
-  return pos;
+  m_list = std::vector<PLAY_INFO>(new_list);
+  return 0;
+
 }
-
-
-
-
 
 
 
