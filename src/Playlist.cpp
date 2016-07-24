@@ -100,8 +100,7 @@ int CPlaylist::PushBackList(LPCTSTR fullPath)
 // 成功: 加えられた位置, 失敗: 負
 int CPlaylist::PushBackListOrFile_AutoPlay(LPCTSTR path, bool fMovePos)
 {
-  //存在しないファイルを追加しようとしたときに
-  //ファイルチェックしないとフォルダ内のファイルだけが追加されることになる。
+  //pathが存在しないとフォルダ内のファイルだけを追加してしまう。
   if (PathFileExists(path) == FALSE)
     return 0;
 
@@ -169,13 +168,11 @@ int CPlaylist::PushBack_CollectedFiles(LPCTSTR fullPath)
 
   //対象ファイル + extra個以外は除去
   const size_t extra = 2;
-
   std::vector<PLAY_INFO> new_list;
   for (size_t i = 0; i < m_list.size(); i++)
   {
     if (i < pos) continue;
     if (pos + extra < i) continue;
-
     new_list.emplace_back(m_list[i]);
   }
 
