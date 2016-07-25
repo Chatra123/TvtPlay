@@ -38,12 +38,13 @@ TVTest pluginのTvtPlayの改変版
   従来よりもプラグイン、ドライバを自動で有効にする範囲を拡大  
 
 
-* 同一フォルダ内のファイルをプレイリストに追加（２コ追加まで）  
+* 同一フォルダ内のファイルをプレイリストに追加（２コまで）  
 
 
 * プレイリストメニューをシンプルなメニューに変更  
-[TvtPlay.ini] Button00=0,OpenPopup,ListPopup  
-![Playlist](./TvtPlay_mod_PopupPlaylist.png)
+TvtPlay.ini  
+Button00=0,OpenPopup,ListPopup  
+![Playlist](./TvtPlay_mod_PopupPlaylist.png)  
 
 
 * ドライバ切り替え時に再生速度を１．０倍速に戻す。  
