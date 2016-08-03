@@ -1747,7 +1747,7 @@ void CTvtPlay::BeginWatchingNextChapter(bool fDoDelay)
               }
 
               if (m_fSkipXChapter && _1st_IsIn && _2nd_IsOut)
-                if (_1st_pos < 2000 && 4000 < _2nd_pos)
+                if (_1st_pos < 2000 && 2000 <= _2nd_pos)
                 {
                   ::PostThreadMessage(m_threadID, WM_TS_WATCH_POS_GT, 0, _1st_pos + m_supposedDispDelay );
                   return;
