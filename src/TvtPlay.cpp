@@ -1672,11 +1672,56 @@ void CTvtPlay::Pause(bool fPause)
 
 }
 
+//mod off
+//void CTvtPlay::SeekToBegin()
+//{
+//    WaitAndPostToSender(WM_TS_SEEK_BGN, 0, 0, m_resetMode != 0);
+//    BeginWatchingNextChapter(true);
+//}
+
+
 void CTvtPlay::SeekToBegin()
 {
+  //mod
+  //０秒にシークしたときにスキップ処理を適用する。
+  if (m_fSkipXChapter && !m_chapter.Get().empty())
+  {
+    bool _1st_IsIn = false, _2nd_IsOut = false;
+    int _1st_pos = 0, _2nd_pos = 0;
+    {
+      auto it = m_chapter.Get().begin();
+      if (it != m_chapter.Get().end())
+      {
+        _1st_IsIn = it->second.IsIn() && it->second.IsX();
+        _1st_pos = it->first;
+      }
+
+      it++;
+      if (it != m_chapter.Get().end())
+      {
+        _2nd_IsOut = it->second.IsOut() && it->second.IsX();
+        _2nd_pos = it->first;
+      }
+    }
+
+    if ( _1st_IsIn && _2nd_IsOut
+        && _1st_pos < 2000 && 2000 <= _2nd_pos)      
+    {
+      SeekAbsolute(_2nd_pos);      
+    }
+    else
+    {
+      WaitAndPostToSender(WM_TS_SEEK_BGN, 0, 0, m_resetMode != 0);
+      BeginWatchingNextChapter(true);
+    }
+  }
+  else
+  {
     WaitAndPostToSender(WM_TS_SEEK_BGN, 0, 0, m_resetMode != 0);
     BeginWatchingNextChapter(true);
+  }
 }
+
 
 void CTvtPlay::SeekToEnd()
 {
@@ -1757,33 +1802,34 @@ void CTvtPlay::BeginWatchingNextChapter(bool fDoDelay)
             //　０秒にシークするとpos=1300が返されるので c-0dix- が処理できない。
             //　2000以下に最初のスキップがあれば適用し、
             //　スキップ先が 2000以下だとループするので_2nd_posを考慮する。
-            if (0 <= pos && pos < 2000)
-            {
-              bool _1st_IsIn = false, _2nd_IsOut = false;
-              int _1st_pos = 0, _2nd_pos = 0;
+            if(m_fSkipXChapter)
+              if (0 <= pos && pos < 2000)
               {
-                auto it = m_chapter.Get().begin();
-                if (it != m_chapter.Get().end())
+                bool _1st_IsIn = false, _2nd_IsOut = false;
+                int _1st_pos = 0, _2nd_pos = 0;
                 {
-                  _1st_IsIn = it->second.IsIn() && it->second.IsX();
-                  _1st_pos = it->first;
+                  auto it = m_chapter.Get().begin();
+                  if (it != m_chapter.Get().end())
+                  {
+                    _1st_IsIn = it->second.IsIn() && it->second.IsX();
+                    _1st_pos = it->first;
+                  }
+
+                  it++;
+                  if (it != m_chapter.Get().end())
+                  {
+                    _2nd_IsOut = it->second.IsOut() && it->second.IsX();
+                    _2nd_pos = it->first;
+                  }
                 }
 
-                it++;
-                if (it != m_chapter.Get().end())
-                {
-                  _2nd_IsOut = it->second.IsOut() && it->second.IsX();
-                  _2nd_pos = it->first;
-                }
+                if (_1st_IsIn && _2nd_IsOut
+                    && _1st_pos < 2000 && 2000 <= _2nd_pos)
+                  {
+                    ::PostThreadMessage(m_threadID, WM_TS_WATCH_POS_GT, 0, _1st_pos + m_supposedDispDelay );
+                    return;
+                  }
               }
-
-              if (m_fSkipXChapter && _1st_IsIn && _2nd_IsOut)
-                if (_1st_pos < 2000 && 4000 < _2nd_pos)
-                {
-                  ::PostThreadMessage(m_threadID, WM_TS_WATCH_POS_GT, 0, _1st_pos + m_supposedDispDelay );
-                  return;
-                }
-            }
 
 
             if (pos >= 0) {
