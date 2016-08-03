@@ -573,7 +573,11 @@ bool CTsSender::SeekToEnd()
     if (!m_fPause) TransactMessage(TEXT("PURGE"));
     else Pause(true, true);
 
-    return Seek(-GetRate()*2, FILE_END);
+   //mod
+   //　　末尾から２秒前にシーク　-->  ファイル再生終了
+   return Seek(0, FILE_END);
+
+   //return Seek(-GetRate()*2, FILE_END);
 }
 
 
@@ -600,13 +604,33 @@ bool CTsSender::Seek(int msec)
     for (int i = 0; i < 5 && (msec < -5000 || 5000 < msec); i++) {
         if ((pos = m_file.GetPosition()) < 0) return false;
 
+        //mod off
         // 前方or後方にこれ以上シークできない場合
-        if (msec < 0 && pos <= rate ||
-            msec > 0 && pos >= size - rate*2) return true;
+        //if (msec < 0 && pos <= rate ||
+        //    msec > 0 && pos >= size - rate*2)
+        //  return true;
+
+        //mod
+        // 前方にこれ以上シークできない場合
+        if (msec < 0 && pos <= rate) return true;
+
+
 
         __int64 approx = pos + rate * msec / 1000;
         if (approx > size - rate*2) approx = size - rate*2;
+
         if (approx < 0) approx = 0;
+
+        //mod
+        //ファイル末尾にシークしたときの処理を　
+        //　　末尾から２秒前にシーク　-->  末尾にシーク、再生終了
+        //に変更
+        if (approx >= size - rate * 2)
+        {
+          Seek(0, FILE_END);
+          return true;
+        }
+
 
         DWORD prevPcr = m_pcr;
         if (!Seek(approx, FILE_BEGIN)) return false;
@@ -889,6 +913,7 @@ int CTsSender::ReadToPcr(int limit, bool fSend, bool fSyncRead)
 }
 
 
+
 // 処理済みのTSパケットを転送し、必要ならファイルから読み込む
 void CTsSender::RotateBuffer(bool fSend, bool fSyncRead)
 {
@@ -945,7 +970,23 @@ bool CTsSender::Seek(__int64 distanceToMove, DWORD dwMoveMethod)
 
     m_curr = m_head = m_tail = NULL;
     m_fEnPcr = false;
-    if (ReadToPcr(120000, false, true) != 2) {
+
+
+    //mod
+    int set_prc = ReadToPcr(120000, false, true);
+
+    // EOFならPCRに関係なく終了させる。
+    // set_prc=0: 終端に達した, set_prc=1: PCRが現れる前に処理パケット数がlimitに達した, set_prc=2: 正常に処理した
+    if (set_prc == 0 && m_fShareWrite == false) {
+      if (m_file.SetPointer(0, FILE_END)) {
+        m_curr = m_head = m_tail = NULL;
+        m_fEnPcr = false;
+        return true;
+      }
+    }
+
+    //if (ReadToPcr(120000, false, true) != 2) {
+    if (set_prc != 2) {
         // なるべく呼び出し前の状態に回復させるが、完全とは限らない
         if (m_file.SetPointer(lastPos, FILE_BEGIN)) {
             m_curr = m_head = m_tail = NULL;
