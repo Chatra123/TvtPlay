@@ -54,8 +54,13 @@ bool CChapterMap::Open(LPCTSTR path, LPCTSTR subDirName)
     if (len < _countof(chPath) - 8) {
         // PathAddExtension()を使ってはいけない!
         len = ::wsprintf(chPath, TEXT("%s.chapter"), pathWoExt);
-        if (len <= _countof(ogmPath) - 4) ::wsprintf(ogmPath, TEXT("%s.txt"), chPath);
-        if (len <= _countof(ogm2Path) - 5) ::wsprintf(ogm2Path, TEXT("%ss.txt"), chPath);
+
+        /* mod off */
+        //if (len <= _countof(ogmPath) - 4) ::wsprintf(ogmPath, TEXT("%s.txt"), chPath);
+        //if (len <= _countof(ogm2Path) - 5) ::wsprintf(ogm2Path, TEXT("%ss.txt"), chPath);
+        /* mod */
+        //コード変更箇所を少なくするため、ogmPathをframePathの代用にする
+        if (len <= _countof(ogmPath) - 10) ::wsprintf(ogmPath, TEXT("%s.frame.txt"), pathWoExt);
     }
     else {
         // 少なくとも.chapterへのパスは生成できなければならない
@@ -76,8 +81,12 @@ bool CChapterMap::Open(LPCTSTR path, LPCTSTR subDirName)
             len = ::lstrlen(subPathWoExt);
             if (len < _countof(subChPath) - 8) {
                 len = ::wsprintf(subChPath, TEXT("%s.chapter"), subPathWoExt);
-                if (len <= _countof(subOgmPath) - 4) ::wsprintf(subOgmPath, TEXT("%s.txt"), subChPath);
-                if (len <= _countof(subOgm2Path) - 5) ::wsprintf(subOgm2Path, TEXT("%ss.txt"), subChPath);
+
+                /* mod off */
+                //if (len <= _countof(subOgmPath) - 4) ::wsprintf(subOgmPath, TEXT("%s.txt"), subChPath);
+                //if (len <= _countof(subOgm2Path) - 5) ::wsprintf(subOgm2Path, TEXT("%ss.txt"), subChPath);
+                /* mod */
+                if (len <= _countof(subOgmPath) - 10) ::wsprintf(subOgmPath, TEXT("%s.frame.txt"), pathWoExt);
             }
         }
     }
@@ -119,7 +128,8 @@ bool CChapterMap::Open(LPCTSTR path, LPCTSTR subDirName)
             // BOMがなければANSIコードページで読む
             std::vector<WCHAR> cmd = ReadUtfFileToEnd(ogmReadPath, FILE_SHARE_READ, true);
             if (!cmd.empty()) {
-                InsertOgmStyleCommand(&cmd.front());
+                //InsertOgmStyleCommand(&cmd.front());
+                InsertFrameStyleCommand(&cmd.front());
             }
         }
         else {
@@ -405,3 +415,84 @@ bool CChapterMap::InsertOgmStyleCommand(LPCTSTR p)
     }
     return true;
 }
+
+
+
+
+//mod
+#include <vector>
+const WCHAR *pOX = L"ox";
+const WCHAR *pIX = L"ix";
+
+///
+/// frameスタイルのテキストをチャプターに変換する 
+///
+bool CChapterMap::InsertFrameStyleCommand(LPCTSTR p)
+{
+  // [frameスタイルチャプター]
+  // 例:
+  // 300
+  // 2000
+  // 4000
+  // 5000
+
+  // frame  -->  time [msec]
+  m_map.clear();
+  std::vector<int> time;
+  for (;;) {
+    int frame;
+    if (!::StrToIntEx(p, STIF_DEFAULT, &frame)) break;
+    while (TEXT('0') <= *p && *p <= TEXT('9'))
+      ++p;
+    int msec = (int)(1.0 * frame / 29.970 * 1000);
+    time.emplace_back(msec);
+
+    //数字以外はとばす
+    while (*p != NULL &&
+      (*p < TEXT('0') || TEXT('9') < *p))
+      ++p;
+  }
+  if (time.size() == 0) return false;
+  if (time.size() % 2 == 1) return false;
+
+
+  // time [msec]  -->  CHAPTER
+  for (size_t i = 0; i < time.size(); i++)
+  {
+    int msec = time[i];
+    if (i == 0 && msec != 0) {
+      std::pair<int, CHAPTER> ch_i;  // c-0cix-
+      ch_i.first = 0;
+      ch_i.second.name.assign(pIX, pIX + 3);
+      m_map.insert(ch_i);
+
+      std::pair<int, CHAPTER> ch_o;  // 1st cox
+      ch_o.first = msec;
+      ch_o.second.name.assign(pOX, pOX + 3);
+      m_map.insert(ch_o);
+    }
+    else if (i % 2 == 0) {
+      std::pair<int, CHAPTER> ch_o;  //cox : スキップ先    （本編開始チャプター）
+      ch_o.first = msec;
+      ch_o.second.name.assign(pOX, pOX + 3);
+      m_map.insert(ch_o);
+    }
+    else if (i % 2 == 1) {
+      std::pair<int, CHAPTER> ch_i;  //cix : スキップ元    （本編終了チャプター）
+      ch_i.first = msec;
+      ch_i.second.name.assign(pIX, pIX + 3);
+      m_map.insert(ch_i);
+    }
+  }
+  std::pair<int, CHAPTER> ch_o;  // -eox-c
+  ch_o.first = CHAPTER_POS_MAX;
+  ch_o.second.name.assign(pOX, pOX + 3);
+  m_map.insert(ch_o);
+
+  return true;
+}
+
+
+
+
+
