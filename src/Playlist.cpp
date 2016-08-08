@@ -158,13 +158,12 @@ int CPlaylist::PushBack_CollectedFiles(LPCTSTR fullPath)
   Sort(CPlaylist::SORT_ASC);
 
   //fullPathのプレイリスト位置を取得
-  int pos = -1;
+  size_t pos = 0;
   for (size_t i = 0; i < m_list.size(); i++)
   {
     if (::_tcsicmp(m_list[i].path, fullPath) == 0)
-      pos = static_cast<int>(i);
+      pos = i;
   }
-
 
   //対象ファイル + extra個以外は除去
   const size_t extra = 2;
@@ -178,7 +177,6 @@ int CPlaylist::PushBack_CollectedFiles(LPCTSTR fullPath)
 
   m_list = std::vector<PLAY_INFO>(new_list);
   return 0;
-
 }
 
 
