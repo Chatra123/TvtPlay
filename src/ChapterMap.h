@@ -35,6 +35,9 @@ private:
     bool Save() const;
     bool InsertCommand(LPCTSTR p);
     bool InsertOgmStyleCommand(LPCTSTR p);
+    //mod
+    bool InsertFrameStyleCommand(LPCTSTR p);
+
     std::map<int, CHAPTER> m_map;
     TCHAR m_path[MAX_PATH];
     HANDLE m_hDir, m_hEvent;
