@@ -58,8 +58,9 @@ bool CChapterMap::Open(LPCTSTR path, LPCTSTR subDirName)
         /* mod off */
         //if (len <= _countof(ogmPath) - 4) ::wsprintf(ogmPath, TEXT("%s.txt"), chPath);
         //if (len <= _countof(ogm2Path) - 5) ::wsprintf(ogm2Path, TEXT("%ss.txt"), chPath);
-        /* mod */
-        //コード変更箇所を少なくするため、ogmPathをframePathの代用にする
+        /* mod 変更点 */
+        //%s.frame.txtを追加
+        //  コード変更箇所を少なくするため、ogmPathをframePathの代用にする
         if (len <= _countof(ogmPath) - 10) ::wsprintf(ogmPath, TEXT("%s.frame.txt"), pathWoExt);
     }
     else {
@@ -91,8 +92,15 @@ bool CChapterMap::Open(LPCTSTR path, LPCTSTR subDirName)
         }
     }
 
-    LPCTSTR chReadPath = subChPath[0] && ::PathFileExists(subChPath) ? subChPath :
-                         ::PathFileExists(chPath) ? chPath : NULL;
+    /* mod off */
+    //LPCTSTR chReadPath = subChPath[0] && ::PathFileExists(subChPath) ? subChPath :
+    //                     ::PathFileExists(chPath) ? chPath : NULL;
+    /* mod 変更点 */
+    //  チャプターフォルダの*.chapterよりTSフォルダの*.frame.txtを優先する
+    LPCTSTR chReadPath = chPath[0] && ::PathFileExists(chPath) ? chPath :
+                         subChPath[0] && ::PathFileExists(subChPath) 
+                                      && !::PathFileExists(ogmPath) ? subChPath :
+                         NULL;
     if (chReadPath) {
         // 中身がチャプターコマンド仕様に従っている場合のみ書き込み可能(m_fWritable)
         for (int i = 0; i < RETRY_LIMIT; ++i) {
@@ -119,11 +127,15 @@ bool CChapterMap::Open(LPCTSTR path, LPCTSTR subDirName)
     else {
         m_fWritable = true;
         ::lstrcpy(m_path, subChPath[0] ? subChPath : chPath);
+        /* mod off */
+        //LPCTSTR ogmReadPath = subOgmPath[0] && ::PathFileExists(subOgmPath) ? subOgmPath :
+        //                      ogmPath[0] && ::PathFileExists(ogmPath) ? ogmPath :
+        //                      subOgm2Path[0] && ::PathFileExists(subOgm2Path) ? subOgm2Path :
+        //                      ogm2Path[0] && ::PathFileExists(ogm2Path) ? ogm2Path : NULL;
+        /* mod */
+        LPCTSTR ogmReadPath = ogmPath[0] && ::PathFileExists(ogmPath) ? ogmPath :
+                              subOgmPath[0] && ::PathFileExists(subOgmPath) ? subOgmPath : NULL;
 
-        LPCTSTR ogmReadPath = subOgmPath[0] && ::PathFileExists(subOgmPath) ? subOgmPath :
-                              ogmPath[0] && ::PathFileExists(ogmPath) ? ogmPath :
-                              subOgm2Path[0] && ::PathFileExists(subOgm2Path) ? subOgm2Path :
-                              ogm2Path[0] && ::PathFileExists(ogm2Path) ? ogm2Path : NULL;
         if (ogmReadPath) {
             // BOMがなければANSIコードページで読む
             std::vector<WCHAR> cmd = ReadUtfFileToEnd(ogmReadPath, FILE_SHARE_READ, true);
@@ -431,8 +443,8 @@ bool CChapterMap::InsertFrameStyleCommand(LPCTSTR p)
 {
   // [frameスタイルチャプター]
   // 例:
+  // 200
   // 300
-  // 2000
   // 4000
   // 5000
 
