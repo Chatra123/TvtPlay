@@ -2255,10 +2255,6 @@ void CTvtPlay::AdjustSeekItem(int statusWidth)
 // 再生位置アイテムの幅を設定する
 void CTvtPlay::SetWidthPositionItem()
 {
-
-  //mod
-  bool notDecision = false;
-
     CStatusItem *pItem = m_statusView.GetItemByID(STATUS_ITEM_POSITION);
     if (pItem) {
         if (m_posItemWidth < 0) {
@@ -2270,40 +2266,11 @@ void CTvtPlay::SetWidthPositionItem()
             if (m_pApp->GetFont(L"StatusBarFont", &font) && m_pApp->GetStatusItemInfo(&info)) {
                 pItem->SetWidth(pPosItem->CalcSuitableWidth(info.hwnd, font));
             }
-            //mod
-            else
-            {
-              notDecision = true;
-            }
         }
         else {
             pItem->SetWidth(m_posItemWidth);
         }
     }
-
-
-    //mod
-    /*
-    長さが１時間を越えていると、
-    時間表示が  0:00:00/2:5...  になるのを修正
-
-    tvtplay.ini  StatusItemWidth=-1 なら再生位置アイテムの幅を計算するが、
-    m_pApp->GetStatusItemInfo(&info)が falseを返すので計算できず MinWidthが適用される。
-
-    pItem->SetWidth(80);
-        0:01:30/2:50:00                 current / duration
-
-    pItem->SetWidth(130);
-       tvtplay.ini  DispTotOnStatus = 1
-       0:01:30/2:50:00(20:01:30)       current / duration ( Tot )
-    */
-    if (pItem && notDecision)
-    {
-      int w = m_fPosDrawTot ? 130 : 80;
-      pItem->SetWidth(w);
-    }
-
-
 }
 
 
