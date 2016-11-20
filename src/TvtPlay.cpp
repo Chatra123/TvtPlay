@@ -2285,7 +2285,6 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
 
         //mod off
         //EVENT_STARTUPDONEでファイルを開くようにしたのでのでここはコメントアウト
-
         //// コマンドラインにパスが指定されていれば開く
         //if (pThis->m_pApp->IsPluginEnabled() && pThis->m_szSpecFileName[0]) {
         //    if (pThis->m_playlist.PushBackListOrFile(pThis->m_szSpecFileName, true) >= 0) {
@@ -2293,8 +2292,6 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
         //    }
         //    pThis->m_szSpecFileName[0] = 0;
         //}
-
-
         //mod
         //ドライバが変更された
         {
@@ -2309,23 +2306,19 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
             // 等速に戻す
             ASFilterSendNotifyMessage(WM_ASFLT_STRETCH, 0, MAKELPARAM(100, 100));
             pThis->m_tsSender.SetSpeed(100, 100);
-
             //再生中なら一時停止
             if (!pThis->IsPaused())
             {
               pThis->Pause(true);
               pThis->m_fAutoPause_onDriverChanged = true;
             }
-
             //最前面　設定を戻す
             if (pThis->m_pApp->IsPluginEnabled())
               pThis->m_pApp->SetAlwaysOnTop(pThis->m_fIniState_AlwaysOnTop);
-
           }
-          else //BonDriver_Pipeに変更
+          else //BonDriver_Pipeに戻された
           {
             pThis->m_fIniState_AlwaysOnTop = pThis->m_pApp->GetAlwaysOnTop();
-
             //再生再開
             if (pThis->m_pApp->IsPluginEnabled())
               if (pThis->m_fAutoPause_onDriverChanged)
@@ -2334,11 +2327,8 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
                 pThis->m_fAutoPause_onDriverChanged = false;
                 pThis->m_pApp->SetAlwaysOnTop(true);
               }
-
           }
         }
-
-
         break;
     case TVTest::EVENT_CHANNELCHANGE:
         // チャンネルが変更された
