@@ -33,9 +33,9 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
     // バーの最大矩形(外枠を含まない)
     int StBar_H = pRect->bottom - pRect->top;
     rcBar.left = pRect->left + 2;
-    rcBar.top = pRect->top + StBar_H * 0.50 + 0;
+    rcBar.top = pRect->top + static_cast<int>(StBar_H * 0.50);
     rcBar.right = pRect->right - 2;
-    rcBar.bottom = pRect->top + StBar_H * 0.90 - 0;
+    rcBar.bottom = pRect->top + static_cast<int>(StBar_H * 0.90);
 
     // 実際に描画するバーの右端位置
     int barX = rcBar.left + ConvUnit(pos, rcBar.right - rcBar.left, dur);
@@ -56,27 +56,25 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
     // シーク位置を描画するかどうか
     bool fDraw_ChapTime = itHover != chMap.end() || (m_seekMode == 0 && fMouseOnBar);
 
-
-    //mod
-    //  fDraw_ChapTime  : チャプターのPos表示           chap▼の上にカーソルがあるか？
-    //  fDraw_BarTime   : シーク先のPos表示
-    //  fMouseOnBarArea : シークバーの色を薄色にする    シークバーエリア上にカーソルがあるか？
+    /*mod 変更点
+    　　シークバーの表示を変更
+      　フォントサイズに合わせて大きさを調整
+    */
+    //fDraw_ChapTime : チャプターのPos表示       chap▼の上？
+    //fDraw_BarTime  : シーク先のPos表示         シークバー上？
+    //fDraw_Time     : Pos表示
+    //fMouseOnStBar  : シークバーを薄色にする    ステータスバー上＆シークバー枠の外
     bool fDraw_BarTime;
     {
       fDraw_BarTime = m_pStatus->GetCurItem() == m_ID;
       fDraw_BarTime &= rcBar.left < mousePos.x && mousePos.x < rcBar.right;
       fDraw_BarTime &= fDraw_ChapTime == false;
     }
-    bool fMouseOnBarArea;
-    {
-      RECT rect;
-      m_pStatus->GetItemRect(m_ID, &rect);
-      fMouseOnBarArea = m_pStatus->GetCurItem() == m_ID;
-      fMouseOnBarArea &= rect.left <= mousePos.x && mousePos.x <= rect.right;
-      fMouseOnBarArea &= rect.top <= mousePos.y && mousePos.y <= rect.bottom;
-    }
+    bool fDraw_Time = fDraw_BarTime || fDraw_ChapTime;
+    bool fMouseOnStBar = m_pStatus->GetCurItem() == m_ID;
 
-    //テキストとdrawPosを先に取得
+
+    //テキストとdrawPosを計算
     TCHAR timeText[256];
     int drawPosWidth = 64;
     int drawPosX = 0;
@@ -85,7 +83,6 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
         // マウスホバー中のチャプター位置もしくはマウス位置
         int posSec = itHover != chMap.end() ? itHover->first / 1000 :
                      ConvUnit(mousePos.x - rcBar.left, dur, rcBar.right - rcBar.left) / 1000;
-
         szOfsText[0] = 0;
         if (m_fDrawOfs) {
             int ofsSec = posSec - pos / 1000;
@@ -112,13 +109,11 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
         }
         if (posSec < 3600 && dur < 3600000) {
             ::wsprintf(szText, TEXT("%02d:%02d%s%s%s"), posSec / 60 % 60, posSec % 60, szOfsText, szTotText, szChName);
-            //mod
             // szTextを cur posで上書き
             if (fDraw_BarTime) ::wsprintf(szText, TEXT(" %02d:%02d "), posSec / 60 % 60, posSec % 60);
         }
         else {
             ::wsprintf(szText, TEXT("%d:%02d:%02d%s%s%s"), posSec / 60 / 60, posSec / 60 % 60, posSec % 60, szOfsText, szTotText, szChName);
-            //mod
             // szTextを cur posで上書き
             if (fDraw_BarTime) ::wsprintf(szText, TEXT(" %d:%02d:%02d "), posSec / 60 / 60, posSec / 60 % 60, posSec % 60);
         }
@@ -132,13 +127,13 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
           drawPosWidth = rc.right - rc.left + 10;
         }
 
-        //描画位置
+        //描画位置 drawPosX
         //  マウス、時刻表示の間のスペース
         const int spc = 20;
         bool draw_RSide = mousePos.x + spc + drawPosWidth < rcBar.right;
         bool draw_LSide = rcBar.left < mousePos.x - spc - drawPosWidth;
         //　左側にマウスと重ねて表示できるか？
-        //    シーク先時刻のときは時刻表示先端と重なるので無視。
+        //    シーク先時刻のときは時刻表示先端と重なるので無視
         bool draw_LSide_time = rcBar.left < mousePos.x - 60;
         drawPosX = draw_RSide ? mousePos.x + spc
           : draw_LSide ? mousePos.x - spc - drawPosWidth
@@ -146,14 +141,13 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
           : mousePos.x + spc;
     }
 
-    //シークバーは時刻表示位置を避けて描画する
-    bool fDraw_Time = fDraw_BarTime || fDraw_ChapTime;
-    auto crFrame = fDraw_Time ? MixColor(crText, crBk, 128) : crText;
-    crBar = fDraw_Time ? MixColor(crBar, crBk, 128) : crBar;
+    //ステータスバー上にカーソルがあれば薄色にする
+    COLORREF crFrame = fMouseOnStBar ? MixColor(crText, crBk, 128) : crText;
+    crBar = fMouseOnStBar ? MixColor(crBar, crBk, 128) : crBar;
 
-    // シークバー
+    //シークバー
     rc = rcBar;
-    rc.right = fDraw_Time ? min(barX, drawPosX - 2) : barX;
+    rc.right = fDraw_Time ? min(barX, drawPosX) : barX;
     DrawUtil::Fill(hdc, &rc, crBar);
     if (fDraw_Time && barX >= drawPosX + drawPosWidth + 2) {
         rc.left = drawPosX + drawPosWidth + 2;
@@ -177,39 +171,30 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
         HPEN hpenOld = SelectPen(hdc, hpen);
         HBRUSH hbrOld = SelectBrush(hdc, ::GetStockObject(NULL_BRUSH));
         ::SetRect(&rc, rcBar.left - 2, rcBar.top - 2, rcBar.right + 2, rcBar.bottom + 2);
-        if (fDraw_Time) {
-            ::Rectangle(hdc, rc.left, rc.top, drawPosX, rc.bottom);
-            //  rc.right < drawPosX + drawPosWidth　になると右側に外枠がはみでることがある
-            int left = min(drawPosX + drawPosWidth, rc.right);
-            ::Rectangle(hdc, left, rc.top, rc.right, rc.bottom);
-        }
-        else {
-            ::Rectangle(hdc, rc.left, rc.top, rc.right, rc.bottom);
-        }
+        ::Rectangle(hdc, rc.left, rc.top, rc.right, rc.bottom);
         SelectPen(hdc, hpenOld);
         SelectBrush(hdc, hbrOld);
     }
 
     // チャプターを描画
-    int bold = StBar_H * 0.10;
+    int bold = static_cast<int>(StBar_H * 0.10);
     bold = max(bold, 1);
     hpen = ::CreatePen(PS_SOLID, bold, crFrame);
-    HBRUSH hbr = ::CreateSolidBrush(crText);
+    HBRUSH hbr = ::CreateSolidBrush(crFrame);
     if (hpen && hbr) {
         HPEN hpenOld = SelectPen(hdc, hpen);
         bool isIn = false, isX = false;
         std::map<int, CChapterMap::CHAPTER>::const_iterator it = chMap.begin();
         for (; it != chMap.end(); ++it) {
             int chapX = rcBar.left + ConvUnit(it->first, rcBar.right - rcBar.left, dur);
-            int chapH = StBar_H * 0.3 - 0;
-            chapH = max(chapH, 6);
+            int chapH = static_cast<int>(StBar_H * 0.40);           
+            chapH = max(chapH, 8);
             POINT apt[3] = { chapX, rcBar.top - 3,
                              it->second.IsOut() ? chapX : chapX - chapH / 2, rcBar.top - chapH,
                              it->second.IsIn() ? chapX : chapX + chapH / 2, rcBar.top - chapH };
             HBRUSH hbrOld = it == itHover ? SelectBrush(hdc, ::GetStockObject(NULL_BRUSH)) : SelectBrush(hdc, hbr);
             ::Polygon(hdc, apt, 3);
             SelectBrush(hdc, hbrOld);
-
             // チャプター区間を描画
             if (isIn) {
                 if (it->second.IsOut() && (isX && it->second.IsX() || !isX && !it->second.IsX())) {
@@ -232,13 +217,13 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
       int right = min(pRect->right, drawPosX + drawPosWidth);
       ::SetRect(&rc, drawPosX - 2, pRect->top - 0, right + 2, pRect->bottom + 4);
       DrawUtil::Fill(hdc, &rc, crBk);
-      //時刻と重なるバー
+      //背景のシークバー
       if (drawPosX < barX) {
         COLORREF crBar_a = MixColor(crText, crBk, 64);
         ::SetRect(&rc, drawPosX - 2, rcBar.top - 1, min(max(barX, drawPosX + 1), drawPosX + drawPosWidth) + 2, rcBar.bottom + 1);
         DrawUtil::Fill(hdc, &rc, crBar_a);
       }
-      //時刻  重ねて太くする
+      //重ねて太字
       ::SetRect(&rc, drawPosX + 5, pRect->top, drawPosX + drawPosWidth, pRect->bottom + 2);
       ::DrawText(hdc, timeText, -1, &rc, DT_LEFT | DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX);
       rc.top = rc.top + 2;
@@ -270,6 +255,9 @@ void CSeekStatusItem::ProcessSeek(int x)
 
 void CSeekStatusItem::OnLButtonDown(int x, int y)
 {
+  /*mod 変更点
+  　　シークバーの上半分（チャプター▼のある部分）をクリックしてもシークするようにした
+  */
     const std::map<int, CChapterMap::CHAPTER> &chMap = m_pPlugin->GetChapter().Get();
     int dur = m_pPlugin->GetDuration();
     RECT rc, rcc;
@@ -283,7 +271,12 @@ void CSeekStatusItem::OnLButtonDown(int x, int y)
         std::map<int, CChapterMap::CHAPTER>::const_iterator it = chMap.lower_bound(chapPosL);
         if (it != chMap.end() && it->first < chapPosR) {
             m_pPlugin->SeekAbsolute(it->first);
+            return;
         }
+    }
+
+    if (m_seekMode == 0) {
+      ProcessSeek(x);
     }
     else if (m_seekMode==1) {
         ::SetCapture(m_pStatus->GetHandle());
@@ -293,9 +286,6 @@ void CSeekStatusItem::OnLButtonDown(int x, int y)
     }
     else if (m_seekMode==2) {
         ::SetCapture(m_pStatus->GetHandle());
-        ProcessSeek(x);
-    }
-    else {
         ProcessSeek(x);
     }
 }
