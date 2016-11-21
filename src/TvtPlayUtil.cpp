@@ -31,10 +31,11 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
     GetClientRect(&rcc);
 
     // バーの最大矩形(外枠を含まない)
-    rcBar.left   = pRect->left + 2;
-    rcBar.top    = pRect->top + (pRect->bottom - pRect->top) / 2 - 4 + 2;
-    rcBar.right  = pRect->right - 2;
-    rcBar.bottom = pRect->top + (pRect->bottom - pRect->top) / 2 + 4 - 2;
+    int StBar_H = pRect->bottom - pRect->top;
+    rcBar.left = pRect->left + 2;
+    rcBar.top = pRect->top + StBar_H * 0.50 + 0;
+    rcBar.right = pRect->right - 2;
+    rcBar.bottom = pRect->top + StBar_H * 0.90 - 0;
 
     // 実際に描画するバーの右端位置
     int barX = rcBar.left + ConvUnit(pos, rcBar.right - rcBar.left, dur);
@@ -75,11 +76,10 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
       fMouseOnBarArea &= rect.top <= mousePos.y && mousePos.y <= rect.bottom;
     }
 
-    // シーク位置を描画
+    //テキストとdrawPosを先に取得
+    TCHAR timeText[256];
     int drawPosWidth = 64;
     int drawPosX = 0;
-
-    //mod
     if (fDraw_ChapTime || fDraw_BarTime) {
         TCHAR szText[256], szOfsText[64], szTotText[64], szChName[16];
         // マウスホバー中のチャプター位置もしくはマウス位置
@@ -122,12 +122,8 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
             // szTextを cur posで上書き
             if (fDraw_BarTime) ::wsprintf(szText, TEXT(" %d:%02d:%02d "), posSec / 60 / 60, posSec / 60 % 60, posSec % 60);
         }
+        ::wsprintf(timeText, TEXT("%s"), szText);
 
-        //mod
-        /*
-    　    変更点
-      　  ・シークバー上で時間を表示
-        */
         // シーク位置の描画に必要な幅を取得する
         ::SetRectEmpty(&rc);
         if (::DrawText(hdc, szText, -1, &rc,
@@ -148,24 +144,11 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
           : draw_LSide ? mousePos.x - spc - drawPosWidth
           : draw_LSide_time && !fDraw_BarTime ? mousePos.x - 60
           : mousePos.x + spc;
-
-        /*
-          実際のハイライト背景色の取得はしない。簡単なのでcrBkで代用。
-          auto crStatusHighlightBack = m_pApp->GetColor(L"StatusHighlightBack");
-        */
-        //時刻表示と重なるシークバー
-        COLORREF crText_a64 = MixColor(crText, crBk, 64);
-        ::SetRect(&rc, drawPosX + 1, rcBar.top - 1, min(max(barX, drawPosX + 1), drawPosX + drawPosWidth - 1), rcBar.bottom - 1);
-        DrawUtil::Fill(hdc, &rc, crText_a64);
-        //時刻表示
-        ::SetRect(&rc, drawPosX + 5, pRect->top + 2, drawPosX + drawPosWidth, pRect->bottom + 4);
-        ::DrawText(hdc, szText, -1, &rc, DT_LEFT | DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX);
     }
 
-    //mod
-    //　シークバーは時刻表示位置を避けて描画する
-    bool fDraw_Time = fMouseOnBarArea;    
-    crText = fDraw_Time ? MixColor(crText, crBk, 128) : crText;
+    //シークバーは時刻表示位置を避けて描画する
+    bool fDraw_Time = fDraw_BarTime || fDraw_ChapTime;
+    auto crFrame = fDraw_Time ? MixColor(crText, crBk, 128) : crText;
     crBar = fDraw_Time ? MixColor(crBar, crBk, 128) : crBar;
 
     // シークバー
@@ -189,14 +172,16 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
     }
 
     // シークバー外枠
-    HPEN hpen = ::CreatePen(PS_SOLID, 1, crText);
+    HPEN hpen = ::CreatePen(PS_SOLID, 1, crFrame);
     if (hpen) {
         HPEN hpenOld = SelectPen(hdc, hpen);
         HBRUSH hbrOld = SelectBrush(hdc, ::GetStockObject(NULL_BRUSH));
         ::SetRect(&rc, rcBar.left - 2, rcBar.top - 2, rcBar.right + 2, rcBar.bottom + 2);
         if (fDraw_Time) {
             ::Rectangle(hdc, rc.left, rc.top, drawPosX, rc.bottom);
-            ::Rectangle(hdc, drawPosX + drawPosWidth, rc.top, rc.right, rc.bottom);
+            //  rc.right < drawPosX + drawPosWidth　になると右側に外枠がはみでることがある
+            int left = min(drawPosX + drawPosWidth, rc.right);
+            ::Rectangle(hdc, left, rc.top, rc.right, rc.bottom);
         }
         else {
             ::Rectangle(hdc, rc.left, rc.top, rc.right, rc.bottom);
@@ -206,6 +191,9 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
     }
 
     // チャプターを描画
+    int bold = StBar_H * 0.10;
+    bold = max(bold, 1);
+    hpen = ::CreatePen(PS_SOLID, bold, crFrame);
     HBRUSH hbr = ::CreateSolidBrush(crText);
     if (hpen && hbr) {
         HPEN hpenOld = SelectPen(hdc, hpen);
@@ -213,9 +201,11 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
         std::map<int, CChapterMap::CHAPTER>::const_iterator it = chMap.begin();
         for (; it != chMap.end(); ++it) {
             int chapX = rcBar.left + ConvUnit(it->first, rcBar.right - rcBar.left, dur);
+            int chapH = StBar_H * 0.3 - 0;
+            chapH = max(chapH, 6);
             POINT apt[3] = { chapX, rcBar.top - 3,
-                             it->second.IsOut() ? chapX : chapX - 4, rcBar.top - 7,
-                             it->second.IsIn() ? chapX : chapX + 4, rcBar.top - 7 };
+                             it->second.IsOut() ? chapX : chapX - chapH / 2, rcBar.top - chapH,
+                             it->second.IsIn() ? chapX : chapX + chapH / 2, rcBar.top - chapH };
             HBRUSH hbrOld = it == itHover ? SelectBrush(hdc, ::GetStockObject(NULL_BRUSH)) : SelectBrush(hdc, hbr);
             ::Polygon(hdc, apt, 3);
             SelectBrush(hdc, hbrOld);
@@ -223,17 +213,36 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
             // チャプター区間を描画
             if (isIn) {
                 if (it->second.IsOut() && (isX && it->second.IsX() || !isX && !it->second.IsX())) {
-                    ::LineTo(hdc, chapX, rcBar.top - 7);
+                    ::LineTo(hdc, chapX, rcBar.top - chapH);
                     isIn = false;
                 }
             }
             else if (it->second.IsIn()) {
-                ::MoveToEx(hdc, chapX, rcBar.top - 7, NULL);
+                ::MoveToEx(hdc, chapX, rcBar.top - chapH, NULL);
                 isX = it->second.IsX();
                 isIn = true;
             }
         }
         SelectPen(hdc, hpenOld);
+    }
+
+    //時刻表示
+    if (fDraw_ChapTime || fDraw_BarTime) {    
+      //背景塗りつぶし
+      int right = min(pRect->right, drawPosX + drawPosWidth);
+      ::SetRect(&rc, drawPosX - 2, pRect->top - 0, right + 2, pRect->bottom + 4);
+      DrawUtil::Fill(hdc, &rc, crBk);
+      //時刻と重なるバー
+      if (drawPosX < barX) {
+        COLORREF crBar_a = MixColor(crText, crBk, 64);
+        ::SetRect(&rc, drawPosX - 2, rcBar.top - 1, min(max(barX, drawPosX + 1), drawPosX + drawPosWidth) + 2, rcBar.bottom + 1);
+        DrawUtil::Fill(hdc, &rc, crBar_a);
+      }
+      //時刻  重ねて太くする
+      ::SetRect(&rc, drawPosX + 5, pRect->top, drawPosX + drawPosWidth, pRect->bottom + 2);
+      ::DrawText(hdc, timeText, -1, &rc, DT_LEFT | DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX);
+      rc.top = rc.top + 2;
+      ::DrawText(hdc, timeText, -1, &rc, DT_LEFT | DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX);
     }
 
     if (hpen) ::DeletePen(hpen);
