@@ -89,7 +89,7 @@ private:
 
 
     //mod
-    void ForcePluginEnable();
+    void ForceEnablePlugin();
 
     //mod
     // 初期パラメータ

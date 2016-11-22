@@ -1868,7 +1868,7 @@ void CTvtPlay::EnablePluginByDriverName()
 ///
 ///　プラグイン、ドライバを強制有効化
 ///
-void CTvtPlay::ForcePluginEnable()
+void CTvtPlay::ForceEnablePlugin()
 {
   if (m_pApp->IsPluginEnabled() == false)
     m_pApp->EnablePlugin(true);
@@ -2427,7 +2427,7 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
         */
         if (pThis->m_fForceEnable)
         {
-          pThis->ForcePluginEnable();
+          pThis->ForceEnablePlugin();
 
           if (pThis->m_szSpecFileName[0]) {
             if (pThis->m_playlist.PushBackListOrFile_AutoPlay(pThis->m_szSpecFileName, true) >= 0) {
@@ -2586,7 +2586,7 @@ BOOL CALLBACK CTvtPlay::WindowMsgCallback(HWND hwnd, UINT uMsg, WPARAM wParam, L
 
             //プラグインの自動有効化
             if (fAdded)
-              pThis->ForcePluginEnable();
+              pThis->ForceEnablePlugin();
 
 
             // 少なくとも1ファイルが再生リストに追加されればそのファイルを開く
