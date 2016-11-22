@@ -2088,11 +2088,11 @@ void CTvtPlay::OnCommand(int id, const POINT *pPt, UINT flags)
         int pos = GetPosition();
         if (pos >= 0) {
 
+          //次のチャプター情報
           bool nextIs_cix = false, nextIs_cox = false;
           int len_toNextIn = -1;
           int pos_next_cox = -1;
           {
-            //次のチャプター情報
             auto it = m_chapter.Get().lower_bound(pos + 1000);
             if (it != m_chapter.Get().end())
             {
@@ -2112,10 +2112,10 @@ void CTvtPlay::OnCommand(int id, const POINT *pPt, UINT flags)
             }
           }
 
+          //直前のチャプター情報
           bool prevIs_cox = false;
           int len_fromPrevOut = -1;
           {
-            //直前のチャプター情報
             auto it = m_chapter.Get().lower_bound(pos + 1000);
             --it;
             if (it != m_chapter.Get().end())
