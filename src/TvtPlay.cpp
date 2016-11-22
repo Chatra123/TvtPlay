@@ -823,6 +823,7 @@ bool CTvtPlay::EnablePlugin(bool fEnable) {
     if (InitializePlugin()){
       if (fEnable) {
         m_fIniState_AlwaysOnTop = m_pApp->GetAlwaysOnTop();
+        m_pApp->SetAlwaysOnTop(false);
       }
       else {
         m_pApp->SetAlwaysOnTop(m_fIniState_AlwaysOnTop);
