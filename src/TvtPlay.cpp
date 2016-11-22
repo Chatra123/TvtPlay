@@ -1425,6 +1425,7 @@ bool CTvtPlay::OpenCurrent(int offset, int stretchID)
   //mod
   if (m_playlist.Get().empty())
     m_pApp->SetAlwaysOnTop(false);
+  ForceEnablePlugin();
 
     return !m_playlist.Get().empty() ? Open(m_playlist.Get()[m_playlist.GetPosition()].path, offset, stretchID) : false;
 }
@@ -2427,8 +2428,6 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
         */
         if (pThis->m_fForceEnable)
         {
-          pThis->ForceEnablePlugin();
-
           if (pThis->m_szSpecFileName[0]) {
             if (pThis->m_playlist.PushBackListOrFile_AutoPlay(pThis->m_szSpecFileName, true) >= 0) {
               pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
@@ -2583,12 +2582,6 @@ BOOL CALLBACK CTvtPlay::WindowMsgCallback(HWND hwnd, UINT uMsg, WPARAM wParam, L
 
               }
             }
-
-            //プラグインの自動有効化
-            if (fAdded)
-              pThis->ForceEnablePlugin();
-
-
             // 少なくとも1ファイルが再生リストに追加されればそのファイルを開く
             if (fAdded) pThis->OpenCurrent();
             // DragFinish()せずに本体のデフォルトプロシージャに任せる
