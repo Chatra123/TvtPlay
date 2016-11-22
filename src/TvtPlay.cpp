@@ -1878,9 +1878,7 @@ void CTvtPlay::ForceEnablePlugin()
   TCHAR path[MAX_PATH];
   m_pApp->GetDriverName(path, _countof(path));
   LPCTSTR name = ::PathFindFileName(path);
-  if (::lstrcmpi(name, TEXT("BonDriver_UDP.dll"))
-    && ::lstrcmpi(name, TEXT("BonDriver_Pipe.dll"))) {
-
+  if (IsValidTvtpDriver() == false) {
     bool set = m_pApp->SetDriverName(TEXT("BonDriver_Pipe.dll"));
     if (set) {
       TVTest::ChannelInfo chInfo;
@@ -1894,6 +1892,28 @@ void CTvtPlay::ForceEnablePlugin()
 
   }
 }
+//mod
+///
+///TvtPlayで使用できるドライバーか？
+///
+bool CTvtPlay::IsValidTvtpDriver()
+{
+  const std::wstring drivers[] = { L"BonDriver_UDP.dll", L"BonDriver_Pipe.dll" };
+
+  TCHAR path[MAX_PATH];
+  m_pApp->GetDriverName(path, _countof(path));
+  LPCTSTR inUse = ::PathFindFileName(path);
+  for (auto driver : drivers)
+  {
+    if (::lstrcmpi(inUse, driver.c_str()) == 0)
+      return true;
+  }
+  return false;
+}
+
+
+
+
 
 
 
@@ -1919,6 +1939,25 @@ void CTvtPlay::OnPreviewChange(bool fPreview)
 
 void CTvtPlay::OnCommand(int id, const POINT *pPt, UINT flags)
 {
+  //mod
+  //地上波を視聴中にTvtpが動作するのを抑止
+  //  Tvtp用Driverでない場合はopen,close以外のコマンドを無視する。
+  //  ただし、シークバーのクリックは動作してしまう。
+  //  EVENT_DRIVERCHANGEでPluginを無効にしたほうがいいかもしれない。
+  if (IsValidTvtpDriver() == false)
+  {
+    const int ID_COM[] = { ID_COMMAND_OPEN ,ID_COMMAND_OPEN_POPUP,
+      ID_COMMAND_LIST_POPUP,ID_COMMAND_CLOSE };
+    bool isOpenCmd = false;
+    for (auto id_c : ID_COM)
+    {
+      if (id_c == id)
+        isOpenCmd = true;
+    }
+    if (isOpenCmd == false) 
+      return;
+  }
+
     switch (id) {
     case ID_COMMAND_OPEN:
         OpenWithDialog();
