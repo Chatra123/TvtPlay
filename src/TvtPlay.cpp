@@ -292,7 +292,6 @@ bool CTvtPlay::Initialize()
     //  初期値をいれておく。
     m_fInfoPaused = true;
     m_fAutoPause_onDriverChanged = false;
-
     //TVTestにドロップ受け入れ
     ::DragAcceptFiles(m_pApp->GetAppWindow(), TRUE);
     m_pApp->SetWindowMessageCallback(WindowMsgCallback, this);
@@ -1026,15 +1025,12 @@ bool CTvtPlay::OpenWithPopup(const POINT &pt, UINT flags)
 
         //mod
         //フォルダ名をリストの先頭に追加
-        TCHAR folderName[MAX_PATH];
-        {
-          ::lstrcpy(folderName, pattern);
-          ::PathRemoveFileSpec(folderName);
-          ::PathStripPath(folderName);
-        }
+       TCHAR folderName[MAX_PATH];
+        ::lstrcpy(folderName, pattern);
+        ::PathRemoveFileSpec(folderName);
+        ::PathStripPath(folderName);
         if (hFind != INVALID_HANDLE_VALUE)
           ::AppendMenu(hmenu, MF_STRING | MF_GRAYED, 0, folderName);
-
 
 
         if (listSize <= 0) {
@@ -1050,7 +1046,6 @@ bool CTvtPlay::OpenWithPopup(const POINT &pt, UINT flags)
                     if (*p == TEXT('&')) *p = TEXT('_');
                 ::AppendMenu(hmenu, MF_STRING, i + 1, str);
             }
-
             //mod
             //リストの最後に空行挿入
             //  - 空行を選択するとリストを非表示にできる。
@@ -1065,13 +1060,10 @@ bool CTvtPlay::OpenWithPopup(const POINT &pt, UINT flags)
     TCHAR fileName[MAX_PATH];
     if (selID > 0 && skipSize+selID-1 < listSize &&
         ::PathRemoveFileSpec(pattern) &&
-        ::PathCombine(fileName, pattern, nameList[skipSize+selID-1]))
-    {
+        ::PathCombine(fileName, pattern, nameList[skipSize+selID-1])) {
         //return m_playlist.PushBackListOrFile(fileName, true) >= 0 ? OpenCurrent() : false;
-
         //mod
         return m_playlist.PushBackListOrFile_AutoPlay(fileName, true) >= 0 ? OpenCurrent() : false;
-
     }
     return false;
 }
@@ -1092,7 +1084,6 @@ bool CTvtPlay::OpenWithPlayListPopup(const POINT &pt, UINT flags)
 
             //mod off
             //hmenu = ::GetSubMenu(hTopMenu, 0);
-
             //mod
             //プレイリスト操作のコマンドはメニューから除去
             hmenu = ::CreatePopupMenu();
@@ -1423,10 +1414,10 @@ int CTvtPlay::TrackPopup(HMENU hmenu, const POINT &pt, UINT flags)
 // プレイリストの現在位置のファイルを開く
 bool CTvtPlay::OpenCurrent(int offset, int stretchID)
 {
-  //mod
-  if (m_playlist.Get().empty())
-    m_pApp->SetAlwaysOnTop(false);
-  ForceEnablePlugin();
+    //mod
+    if (m_playlist.Get().empty())
+      m_pApp->SetAlwaysOnTop(false);
+    ForceEnablePlugin();
 
     return !m_playlist.Get().empty() ? Open(m_playlist.Get()[m_playlist.GetPosition()].path, offset, stretchID) : false;
 }
@@ -1492,7 +1483,6 @@ bool CTvtPlay::Open(LPCTSTR fileName, int offset, int stretchID)
 
         //mod
         m_pApp->SetAlwaysOnTop(false);
-
         return false;
     }
     m_hThread = reinterpret_cast<HANDLE>(_beginthreadex(NULL, 0, TsSenderThread, this, 0, NULL));
@@ -1503,7 +1493,6 @@ bool CTvtPlay::Open(LPCTSTR fileName, int offset, int stretchID)
 
         //mod
         m_pApp->SetAlwaysOnTop(false);
-
         return false;
     }
     if (m_threadPriority >= THREAD_PRIORITY_LOWEST &&
@@ -1562,11 +1551,8 @@ bool CTvtPlay::Open(LPCTSTR fileName, int offset, int stretchID)
 
     m_pApp->StatusItemNotify(1, TVTest::STATUS_ITEM_NOTIFY_REDRAW);
 
-
     //mod
     m_pApp->SetAlwaysOnTop(true);
-
-
     return true;
 }
 
@@ -1620,11 +1606,8 @@ void CTvtPlay::Close()
         UpdateInfos();
         m_pApp->StatusItemNotify(1, TVTest::STATUS_ITEM_NOTIFY_REDRAW);
 
-
         //mod
         m_pApp->SetAlwaysOnTop(false);
-
-
     }
 }
 
@@ -1671,7 +1654,6 @@ void CTvtPlay::Pause(bool fPause)
 
     //mod
     m_pApp->SetAlwaysOnTop(!fPause);
-
 }
 
 //mod off
@@ -1692,33 +1674,28 @@ void CTvtPlay::SeekToBegin()
     int _1st_pos = 0, _2nd_pos = 0;
     {
       auto it = m_chapter.Get().begin();
-      if (it != m_chapter.Get().end())
-      {
+      if (it != m_chapter.Get().end()) {
         _1st_IsIn = it->second.IsIn() && it->second.IsX();
         _1st_pos = it->first;
       }
 
       it++;
-      if (it != m_chapter.Get().end())
-      {
+      if (it != m_chapter.Get().end()) {
         _2nd_IsOut = it->second.IsOut() && it->second.IsX();
         _2nd_pos = it->first;
       }
     }
 
     if ( _1st_IsIn && _2nd_IsOut
-        && _1st_pos < 2000 && 2000 <= _2nd_pos)      
-    {
+        && _1st_pos < 2000 && 2000 <= _2nd_pos) {
       SeekAbsolute(_2nd_pos);      
     }
-    else
-    {
+    else {
       WaitAndPostToSender(WM_TS_SEEK_BGN, 0, 0, m_resetMode != 0);
       BeginWatchingNextChapter(true);
     }
   }
-  else
-  {
+  else {
     WaitAndPostToSender(WM_TS_SEEK_BGN, 0, 0, m_resetMode != 0);
     BeginWatchingNextChapter(true);
   }
@@ -1805,29 +1782,25 @@ void CTvtPlay::BeginWatchingNextChapter(bool fDoDelay)
             //　2000以下に最初のスキップがあれば適用し、
             //　スキップ先が 2000以下だとループするので_2nd_posを考慮する。
             if(m_fSkipXChapter)
-              if (0 <= pos && pos < 2000)
-              {
+              if (0 <= pos && pos < 2000) {
                 bool _1st_IsIn = false, _2nd_IsOut = false;
                 int _1st_pos = 0, _2nd_pos = 0;
                 {
                   auto it = m_chapter.Get().begin();
-                  if (it != m_chapter.Get().end())
-                  {
+                  if (it != m_chapter.Get().end()) {
                     _1st_IsIn = it->second.IsIn() && it->second.IsX();
                     _1st_pos = it->first;
                   }
 
                   it++;
-                  if (it != m_chapter.Get().end())
-                  {
+                  if (it != m_chapter.Get().end()) {
                     _2nd_IsOut = it->second.IsOut() && it->second.IsX();
                     _2nd_pos = it->first;
                   }
                 }
 
                 if (_1st_IsIn && _2nd_IsOut
-                    && _1st_pos < 2000 && 2000 <= _2nd_pos)
-                  {
+                    && _1st_pos < 2000 && 2000 <= _2nd_pos) {
                     ::PostThreadMessage(m_threadID, WM_TS_WATCH_POS_GT, 0, _1st_pos + m_supposedDispDelay );
                     return;
                   }
@@ -1838,8 +1811,7 @@ void CTvtPlay::BeginWatchingNextChapter(bool fDoDelay)
                 std::map<int, CChapterMap::CHAPTER>::const_iterator it = m_chapter.Get().upper_bound(pos);
                 for (; it != m_chapter.Get().end(); ++it) {
                     if (m_fSkipXChapter && it->second.IsIn() && it->second.IsX() ||
-                        m_fRepeatChapter && it->second.IsOut())
-                    {
+                        m_fRepeatChapter && it->second.IsOut()) {
                         ::PostThreadMessage(m_threadID, WM_TS_WATCH_POS_GT, 0, it->first + m_supposedDispDelay);
                         break;
                     }
@@ -1876,9 +1848,6 @@ void CTvtPlay::ForceEnablePlugin()
     m_pApp->EnablePlugin(true);
 
   //BonDriver_Pipeに変更
-  TCHAR path[MAX_PATH];
-  m_pApp->GetDriverName(path, _countof(path));
-  LPCTSTR name = ::PathFindFileName(path);
   if (IsValidTvtpDriver() == false) {
     bool set = m_pApp->SetDriverName(TEXT("BonDriver_Pipe.dll"));
     if (set) {
@@ -1904,16 +1873,12 @@ bool CTvtPlay::IsValidTvtpDriver()
   TCHAR path[MAX_PATH];
   m_pApp->GetDriverName(path, _countof(path));
   LPCTSTR inUse = ::PathFindFileName(path);
-  for (auto driver : drivers)
-  {
+  for (auto driver : drivers) {
     if (::lstrcmpi(inUse, driver.c_str()) == 0)
       return true;
   }
   return false;
 }
-
-
-
 
 
 
@@ -2135,8 +2100,7 @@ void CTvtPlay::OnCommand(int id, const POINT *pPt, UINT flags)
           int pos_next_cox = -1;
           {
             auto it = m_chapter.Get().lower_bound(pos + 1000);
-            if (it != m_chapter.Get().end())
-            {
+            if (it != m_chapter.Get().end()) {
               nextIs_cox = it->second.IsOut();
               nextIs_cix = it->second.IsIn();
               len_toNextIn = nextIs_cix ? it->first - pos : -1;
@@ -2144,8 +2108,7 @@ void CTvtPlay::OnCommand(int id, const POINT *pPt, UINT flags)
 
             //次のスキップ先取得（本編開始チャプター）
             pos_next_cox = pos + 10 * 1000;
-            for (;;)
-            {
+            for (;;) {
               if (it == m_chapter.Get().end()) break;
               else if (it->second.IsOut()) { pos_next_cox = it->first; break; }
               else if (it->second.IsIn()) ++it;
@@ -2159,8 +2122,7 @@ void CTvtPlay::OnCommand(int id, const POINT *pPt, UINT flags)
           {
             auto it = m_chapter.Get().lower_bound(pos + 1000);
             --it;
-            if (it != m_chapter.Get().end())
-            {
+            if (it != m_chapter.Get().end()) {
               prevIs_cox = it->second.IsOut();
               len_fromPrevOut = prevIs_cox ? pos - it->first : -1;
             }
@@ -2169,13 +2131,11 @@ void CTvtPlay::OnCommand(int id, const POINT *pPt, UINT flags)
           int dst_pos;
           {
             //スキップチャプター中間（ＣＭ中）
-            if (nextIs_cox)
-            {
+            if (nextIs_cox) {
               dst_pos = pos_next_cox;
             }
             //スキップ先から30秒以内（本編開始チャプター直後）
-            else if (prevIs_cox && len_fromPrevOut < 30 * 1000)
-            {
+            else if (prevIs_cox && len_fromPrevOut < 30 * 1000) {
               // ＆ スキップ元から10+2秒以内（本編終了チャプター直前）
               if (nextIs_cix && len_toNextIn < 12 * 1000)
                 dst_pos = pos_next_cox;
@@ -2333,16 +2293,14 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
         }
         // 複数禁止起動時にチャンネル設定されない場合の対策(ver.0.7.22未満)
         if (pThis->m_fEventExecute &&
-            pThis->m_pApp->GetVersion() < TVTest::MakeVersion(0,7,22))
-        {
+            pThis->m_pApp->GetVersion() < TVTest::MakeVersion(0,7,22)) {
             TCHAR path[MAX_PATH];
             pThis->m_pApp->GetDriverName(path, _countof(path));
             LPCTSTR name = ::PathFindFileName(path);
 
             if (pThis->m_pApp->IsPluginEnabled() &&
                 (!::lstrcmpi(name, TEXT("BonDriver_UDP.dll")) ||
-                !::lstrcmpi(name, TEXT("BonDriver_Pipe.dll"))))
-            {
+                !::lstrcmpi(name, TEXT("BonDriver_Pipe.dll")))) {
                 TVTest::ChannelInfo chInfo;
                 if (!pThis->m_pApp->GetCurrentChannelInfo(&chInfo)) {
                     pThis->m_pApp->AddLog(L"SetChannel");
@@ -2372,14 +2330,12 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
 
           // BonDriver_Pipe以外に変更
           if (::lstrcmpi(name, TEXT("BonDriver_UDP.dll")) &&
-            ::lstrcmpi(name, TEXT("BonDriver_Pipe.dll")))
-          {
+            ::lstrcmpi(name, TEXT("BonDriver_Pipe.dll"))) {
             // 等速に戻す
             ASFilterSendNotifyMessage(WM_ASFLT_STRETCH, 0, MAKELPARAM(100, 100));
             pThis->m_tsSender.SetSpeed(100, 100);
             //再生中なら一時停止
-            if (!pThis->IsPaused())
-            {
+            if (!pThis->IsPaused()) {
               pThis->Pause(true);
               pThis->m_fAutoPause_onDriverChanged = true;
             }
@@ -2387,13 +2343,11 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
             if (pThis->m_pApp->IsPluginEnabled())
               pThis->m_pApp->SetAlwaysOnTop(pThis->m_fIniState_AlwaysOnTop);
           }
-          else //BonDriver_Pipeに戻された
-          {
+          else { //BonDriver_Pipeに戻された
             pThis->m_fIniState_AlwaysOnTop = pThis->m_pApp->GetAlwaysOnTop();
             //再生再開
             if (pThis->m_pApp->IsPluginEnabled())
-              if (pThis->m_fAutoPause_onDriverChanged)
-              {
+              if (pThis->m_fAutoPause_onDriverChanged) {
                 pThis->Pause(false);
                 pThis->m_fAutoPause_onDriverChanged = false;
                 pThis->m_pApp->SetAlwaysOnTop(true);
@@ -2466,8 +2420,7 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
         ・case TVTest::EVENT_EXECUTE:から FALL THROUGH!でも実行される。
           多重起動禁止のTVTestから送られるコマンドラインでも再生されるようになる。
         */
-        if (pThis->m_fForceEnable)
-        {
+        if (pThis->m_fForceEnable) {
           if (pThis->m_szSpecFileName[0]) {
             if (pThis->m_playlist.PushBackListOrFile_AutoPlay(pThis->m_szSpecFileName, true) >= 0) {
               pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
@@ -2593,7 +2546,6 @@ BOOL CALLBACK CTvtPlay::WindowMsgCallback(HWND hwnd, UINT uMsg, WPARAM wParam, L
             //  }
             //}
 
-
             //mod
             //dropされたファイルのチェック
             int media_num = 0;
@@ -2607,15 +2559,13 @@ BOOL CALLBACK CTvtPlay::WindowMsgCallback(HWND hwnd, UINT uMsg, WPARAM wParam, L
             for (int i = 0; i < num; ++i) {
               if (::DragQueryFile((HDROP)wParam, i, fileName, _countof(fileName)) != 0 &&
                 (CPlaylist::IsPlayListFile(fileName) || CPlaylist::IsMediaFile(fileName))) {
-
                 //　mediaが１つ   -->  フォルダ内のファイル収集
                 //  複数 or list  -->  ドロップされたファイルのみ追加
                 if (media_num == 1) {
                   if (pThis->m_playlist.PushBackListOrFile_AutoPlay(fileName, !fAdded) >= 0)
                     fAdded = true;
                 }
-                else
-                {
+                else {
                   if (pThis->m_playlist.PushBackListOrFile(fileName, !fAdded) >= 0)
                     fAdded = true;
                 }
