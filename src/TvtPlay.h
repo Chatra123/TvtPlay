@@ -91,7 +91,7 @@ private:
     //mod
     void ForceEnablePlugin();
     bool IsValidTvtpDriver();
-    // 初期パラメータ
+    bool m_fHasState_AlwaysOnTop;
     bool m_fIniState_AlwaysOnTop;
     bool m_fAutoPause_onDriverChanged;
 
