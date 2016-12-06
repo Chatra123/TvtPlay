@@ -127,8 +127,8 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
           drawPosWidth = rc.right - rc.left + 10;
         }
 
-        //描画位置 drawPosX
-        //  マウス、時刻表示の間のスペース
+        //drawPosX  時刻表示の描画位置
+        //spc       マウス、時刻表示の間のスペース
         const int spc = 20;
         bool draw_RSide = mousePos.x + spc + drawPosWidth < rcBar.right;
         bool draw_LSide = rcBar.left < mousePos.x - spc - drawPosWidth;
@@ -141,8 +141,8 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
           : mousePos.x + spc;
     }
 
-    //ステータスバー上にカーソルがあれば薄色にする
-    COLORREF crFrame = fMouseOnStBar ? MixColor(crText, crBk, 128) : crText;
+    //ステータスバー上にカーソルがあればシークバーを薄色にする
+    COLORREF crBarFrame = fMouseOnStBar ? MixColor(crBar, crBk, 128) : crBar;
     crBar = fMouseOnStBar ? MixColor(crBar, crBk, 128) : crBar;
 
     //シークバー
@@ -166,7 +166,7 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
     }
 
     // シークバー外枠
-    HPEN hpen = ::CreatePen(PS_SOLID, 1, crFrame);
+    HPEN hpen = ::CreatePen(PS_SOLID, 1, crBarFrame);
     if (hpen) {
         HPEN hpenOld = SelectPen(hdc, hpen);
         HBRUSH hbrOld = SelectBrush(hdc, ::GetStockObject(NULL_BRUSH));
@@ -174,13 +174,16 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
         ::Rectangle(hdc, rc.left, rc.top, rc.right, rc.bottom);
         SelectPen(hdc, hpenOld);
         SelectBrush(hdc, hbrOld);
+        ::DeletePen(hpen);
+        ::DeletePen(hpenOld);
+        ::DeleteBrush(hbrOld);
     }
 
-    // チャプターを描画
+    //チャプターを描画
     int bold = static_cast<int>(StBar_H * 0.10);
     bold = max(bold, 1);
-    hpen = ::CreatePen(PS_SOLID, bold, crFrame);
-    HBRUSH hbr = ::CreateSolidBrush(crFrame);
+    hpen = ::CreatePen(PS_SOLID, bold, crBarFrame);
+    HBRUSH hbr = ::CreateSolidBrush(crBarFrame);
     if (hpen && hbr) {
         HPEN hpenOld = SelectPen(hdc, hpen);
         bool isIn = false, isX = false;
@@ -195,6 +198,7 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
             HBRUSH hbrOld = it == itHover ? SelectBrush(hdc, ::GetStockObject(NULL_BRUSH)) : SelectBrush(hdc, hbr);
             ::Polygon(hdc, apt, 3);
             SelectBrush(hdc, hbrOld);
+            ::DeleteBrush(hbrOld);
             // チャプター区間を描画
             if (isIn) {
                 if (it->second.IsOut() && (isX && it->second.IsX() || !isX && !it->second.IsX())) {
@@ -209,6 +213,7 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
             }
         }
         SelectPen(hdc, hpenOld);
+        ::DeletePen(hpenOld);
     }
 
     //時刻表示
@@ -219,7 +224,7 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
       DrawUtil::Fill(hdc, &rc, crBk);
       //背景のシークバー
       if (drawPosX < barX) {
-        COLORREF crBar_a = MixColor(crText, crBk, 64);
+        COLORREF crBar_a = MixColor(crBar, crBk, 128);
         ::SetRect(&rc, drawPosX - 2, rcBar.top - 1, min(max(barX, drawPosX + 1), drawPosX + drawPosWidth) + 2, rcBar.bottom + 1);
         DrawUtil::Fill(hdc, &rc, crBar_a);
       }
