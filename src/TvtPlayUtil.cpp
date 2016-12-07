@@ -174,10 +174,8 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
         ::Rectangle(hdc, rc.left, rc.top, rc.right, rc.bottom);
         SelectPen(hdc, hpenOld);
         SelectBrush(hdc, hbrOld);
-        ::DeletePen(hpen);
-        ::DeletePen(hpenOld);
-        ::DeleteBrush(hbrOld);
     }
+    if (hpen) ::DeletePen(hpen);
 
     //チャプターを描画
     int bold = static_cast<int>(StBar_H * 0.10);
@@ -198,7 +196,6 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
             HBRUSH hbrOld = it == itHover ? SelectBrush(hdc, ::GetStockObject(NULL_BRUSH)) : SelectBrush(hdc, hbr);
             ::Polygon(hdc, apt, 3);
             SelectBrush(hdc, hbrOld);
-            ::DeleteBrush(hbrOld);
             // チャプター区間を描画
             if (isIn) {
                 if (it->second.IsOut() && (isX && it->second.IsX() || !isX && !it->second.IsX())) {
@@ -213,8 +210,9 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
             }
         }
         SelectPen(hdc, hpenOld);
-        ::DeletePen(hpenOld);
     }
+    if (hpen) ::DeletePen(hpen);
+    if (hbr) ::DeleteBrush(hbr);
 
     //時刻表示
     if (fDraw_ChapTime || fDraw_BarTime) {    
@@ -235,8 +233,7 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
       ::DrawText(hdc, timeText, -1, &rc, DT_LEFT | DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX);
     }
 
-    if (hpen) ::DeletePen(hpen);
-    if (hbr) ::DeleteBrush(hbr);
+
 }
 
 void CSeekStatusItem::ProcessSeek(int x)
