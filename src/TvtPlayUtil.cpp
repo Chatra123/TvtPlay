@@ -26,6 +26,8 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
     COLORREF crText = ::GetTextColor(hdc);
     COLORREF crBk = ::GetBkColor(hdc);
     COLORREF crBar = m_pPlugin->IsPaused() ? MixColor(crText, crBk, 128) : crText;
+    COLORREF crBarFrame = crText;
+
     RECT rcBar, rcr, rcc, rc;
     GetRect(&rcr);
     GetClientRect(&rcc);
@@ -73,6 +75,9 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
     bool fDraw_Time = fDraw_BarTime || fDraw_ChapTime;
     bool fMouseOnStBar = m_pStatus->GetCurItem() == m_ID;
 
+    //ステータスバー上にカーソルがあればシークバーを薄色にする
+    crBar = fMouseOnStBar ? MixColor(crBar, crBk, 128) : crBar;
+    crBarFrame = fMouseOnStBar ? MixColor(crBarFrame, crBk, 128) : crBarFrame;
 
     //テキストとdrawPosを計算
     TCHAR timeText[256];
@@ -140,10 +145,6 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
           : draw_LSide_time && !fDraw_BarTime ? mousePos.x - 60
           : mousePos.x + spc;
     }
-
-    //ステータスバー上にカーソルがあればシークバーを薄色にする
-    COLORREF crBarFrame = fMouseOnStBar ? MixColor(crBar, crBk, 128) : crBar;
-    crBar = fMouseOnStBar ? MixColor(crBar, crBk, 128) : crBar;
 
     //シークバー
     rc = rcBar;
@@ -222,9 +223,9 @@ void CSeekStatusItem::Draw(HDC hdc, const RECT *pRect)
       DrawUtil::Fill(hdc, &rc, crBk);
       //背景のシークバー
       if (drawPosX < barX) {
-        COLORREF crBar_a = MixColor(crBar, crBk, 128);
+        COLORREF crBar_back = MixColor(crBar, crBk, 128);
         ::SetRect(&rc, drawPosX - 2, rcBar.top - 1, min(max(barX, drawPosX + 1), drawPosX + drawPosWidth) + 2, rcBar.bottom + 1);
-        DrawUtil::Fill(hdc, &rc, crBar_a);
+        DrawUtil::Fill(hdc, &rc, crBar_back);
       }
       //重ねて太字
       ::SetRect(&rc, drawPosX + 5, pRect->top, drawPosX + drawPosWidth, pRect->bottom + 2);
