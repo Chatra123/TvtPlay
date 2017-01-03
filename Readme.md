@@ -39,8 +39,7 @@ Button00=0,OpenPopup,ListPopup
 ![Playlist](./TvtPlay_mod_Playlist.png)  
 
 
-* TVTestを.tsの既定のプログラムにするだけで再生できるようした。  
-  従来よりもプラグイン、ドライバを自動で有効にする範囲を拡大し、  
+* 従来よりもプラグイン、ドライバを自動で有効にする範囲を拡大し、  
   引数に.ts .tslistがあるだけで再生する。  
 
   
