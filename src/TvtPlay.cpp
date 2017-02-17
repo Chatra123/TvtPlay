@@ -286,16 +286,14 @@ bool CTvtPlay::Initialize()
     if (!::GetModuleFileName(g_hinstDLL, m_szIniFileName, _countof(m_szIniFileName)) ||
         !::PathRenameExtension(m_szIniFileName, TEXT(".ini"))) return false;
 
-
     //mod 
-    //  OnDriverChanged　最前面表示の判定にPause()を使用しているので
-    //  初期値をいれておく。
+    //  初期値
     m_fInfoPaused = true;
+    m_fHalt_SetAlwaysOnTop = false;
     m_fAutoPause_onDriverChanged = false;
     //TVTestにドロップ受け入れ
     ::DragAcceptFiles(m_pApp->GetAppWindow(), TRUE);
     m_pApp->SetWindowMessageCallback(WindowMsgCallback, this);
-
 
 
     // コマンドを登録
@@ -830,14 +828,12 @@ bool CTvtPlay::EnablePlugin(bool fEnable) {
           m_fIniState_AlwaysOnTop = m_pApp->GetAlwaysOnTop();
           m_fHasState_AlwaysOnTop = true;
         }
-        if(IsValidTvtpDriver())
-          m_pApp->SetAlwaysOnTop(false);
+        SetAlwaysOnTop(false, true);
       }
       else {
         //最前面　TVTest側の設定に戻す
         if (m_fHasState_AlwaysOnTop) {
-          if (IsValidTvtpDriver())
-            m_pApp->SetAlwaysOnTop(m_fIniState_AlwaysOnTop);
+          SetAlwaysOnTop(m_fIniState_AlwaysOnTop, true);
           m_fHasState_AlwaysOnTop = false;
         }
       }
@@ -1429,10 +1425,7 @@ bool CTvtPlay::OpenCurrent(int offset, int stretchID)
 {
     //mod
     if (m_playlist.Get().empty())
-    {
-      if (IsValidTvtpDriver())
-        m_pApp->SetAlwaysOnTop(false);
-    }
+      SetAlwaysOnTop(false, true);
     else
       ForceEnablePlugin();
 
@@ -1497,10 +1490,8 @@ bool CTvtPlay::Open(LPCTSTR fileName, int offset, int stretchID)
     m_hThreadEvent = ::CreateEvent(NULL, TRUE, FALSE, NULL);
     if (!m_hThreadEvent) {
         m_tsSender.Close();
-
         //mod
-        if(IsValidTvtpDriver())
-          m_pApp->SetAlwaysOnTop(false);
+        SetAlwaysOnTop(false, true);
         return false;
     }
     m_hThread = reinterpret_cast<HANDLE>(_beginthreadex(NULL, 0, TsSenderThread, this, 0, NULL));
@@ -1508,10 +1499,8 @@ bool CTvtPlay::Open(LPCTSTR fileName, int offset, int stretchID)
         ::CloseHandle(m_hThreadEvent);
         m_hThreadEvent = NULL;
         m_tsSender.Close();
-
         //mod
-        if (IsValidTvtpDriver())
-          m_pApp->SetAlwaysOnTop(false);
+        SetAlwaysOnTop(false, true);
         return false;
     }
     if (m_threadPriority >= THREAD_PRIORITY_LOWEST &&
@@ -1571,8 +1560,7 @@ bool CTvtPlay::Open(LPCTSTR fileName, int offset, int stretchID)
     m_pApp->StatusItemNotify(1, TVTest::STATUS_ITEM_NOTIFY_REDRAW);
 
     //mod
-    if (IsValidTvtpDriver())
-      m_pApp->SetAlwaysOnTop(true);
+    SetAlwaysOnTop(true, true);
     return true;
 }
 
@@ -1627,8 +1615,7 @@ void CTvtPlay::Close()
         m_pApp->StatusItemNotify(1, TVTest::STATUS_ITEM_NOTIFY_REDRAW);
 
         //mod
-        if (IsValidTvtpDriver())
-          m_pApp->SetAlwaysOnTop(false);
+        SetAlwaysOnTop(false, true);
     }
 }
 
@@ -1674,8 +1661,7 @@ void CTvtPlay::Pause(bool fPause)
     WaitAndPostToSender(WM_TS_PAUSE, fPause, 0, false);
 
     //mod
-    if (IsValidTvtpDriver())
-      m_pApp->SetAlwaysOnTop(!fPause);
+    SetAlwaysOnTop(!fPause, true);
 }
 
 //mod off
@@ -1862,7 +1848,7 @@ void CTvtPlay::EnablePluginByDriverName()
 
 //mod
 ///
-///　プラグイン、ドライバを強制有効化
+///プラグイン、ドライバを強制有効化
 ///
 void CTvtPlay::ForceEnablePlugin()
 {
@@ -1884,7 +1870,23 @@ void CTvtPlay::ForceEnablePlugin()
 
   }
 }
-//mod
+///
+///SetAlwaysOnTop
+///
+/*
+  "全画面、非アクティブで次のファイルに切り替わるとTVTestのウィンドウが表示される"
+  のを修正。
+  case WM_QUERY_CLOSE_NEXT:の
+  pThis->Close();
+  pThis->OpenCurrent();
+  でm_pApp->SetAlwaysOnTop(fAlwaysOnTop);を連続で実行しないようにm_fHalt_SetAlwaysOnTopで制御する。
+*/
+void CTvtPlay::SetAlwaysOnTop(bool fAlwaysOnTop, bool fCheckDriver)
+{
+  if (m_fHalt_SetAlwaysOnTop) return;
+  if (fCheckDriver && IsValidTvtpDriver() == false) return;
+  m_pApp->SetAlwaysOnTop(fAlwaysOnTop);
+}
 ///
 ///TvtPlayで使用できるドライバーか？
 ///
@@ -2350,9 +2352,8 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
           pThis->m_pApp->GetDriverName(path, _countof(path));
           LPCTSTR name = ::PathFindFileName(path);
 
-          //BonDriver_Pipeから変更された
-          if (::lstrcmpi(name, TEXT("BonDriver_UDP.dll")) &&
-            ::lstrcmpi(name, TEXT("BonDriver_Pipe.dll"))) {
+          //BonDriver_Pipe以外に変更された
+          if(pThis->IsValidTvtpDriver() == false){
             //等速に戻す
             ASFilterSendNotifyMessage(WM_ASFLT_STRETCH, 0, MAKELPARAM(100, 100));
             pThis->m_tsSender.SetSpeed(100, 100);
@@ -2364,7 +2365,7 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
             //最前面　TVTest側の設定に戻す
             if (pThis->m_pApp->IsPluginEnabled() 
               && pThis->m_fHasState_AlwaysOnTop) {
-                pThis->m_pApp->SetAlwaysOnTop(pThis->m_fIniState_AlwaysOnTop);
+                pThis->SetAlwaysOnTop(pThis->m_fIniState_AlwaysOnTop, false);
                 pThis->m_fHasState_AlwaysOnTop = false;
             }
           }
@@ -2381,7 +2382,7 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
               && pThis->m_fAutoPause_onDriverChanged) {
                 pThis->Pause(false);
                 pThis->m_fAutoPause_onDriverChanged = false;
-                pThis->m_pApp->SetAlwaysOnTop(true);
+                pThis->SetAlwaysOnTop(true, false);
               }
           }
         }
@@ -2667,7 +2668,9 @@ LRESULT CALLBACK CTvtPlay::FrameWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
         pThis->m_pApp->StatusItemNotify(1, TVTest::STATUS_ITEM_NOTIFY_REDRAW);
         return 0;
     case WM_QUERY_CLOSE_NEXT:
+        pThis->m_fHalt_SetAlwaysOnTop = true;
         pThis->Close();
+        pThis->m_fHalt_SetAlwaysOnTop = false;
         if (pThis->m_playlist.Next(pThis->IsAllRepeat())) pThis->OpenCurrent();
         return 0;
     case WM_QUERY_SEEK_BGN:
