@@ -2350,7 +2350,6 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
         {
           TCHAR path[MAX_PATH];
           pThis->m_pApp->GetDriverName(path, _countof(path));
-          LPCTSTR name = ::PathFindFileName(path);
 
           //BonDriver_Pipe以外に変更された
           if(pThis->IsValidTvtpDriver() == false){
