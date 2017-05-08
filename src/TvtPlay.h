@@ -9,6 +9,7 @@ class CTvtPlay : public TVTest::CTVTestPlugin, public ITvtPlayController
     static const int TIMER_UPDATE_HASH_LIST_INTERVAL = 5000;
     static const int TIMER_SYNC_CHAPTER_INTERVAL = 1000;
     static const int TIMER_WATCH_POS_GT_INTERVAL = 1000;
+    static const int TIMER_ALWAYS_ON_TOP_INTERVAL = 2 * 1000; /* mod */
     static const int POPUP_MAX_MAX = 10000;
 public:
     // CTVTestPlugin
@@ -92,6 +93,7 @@ private:
     void ForceEnablePlugin();
     bool IsValidTvtpDriver();
     void SetAlwaysOnTop(bool fAlwaysOnTop, bool fCheckDriver);
+    bool m_fAlwaysOnTop;
     bool m_fHasOriginal_AlwaysOnTop;
     bool m_fOriginal_AlwaysOnTop;
     bool m_fHalt_SetAlwaysOnTop;

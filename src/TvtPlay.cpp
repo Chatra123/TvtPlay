@@ -77,6 +77,7 @@ enum {
     TIMER_ID_UPDATE_HASH_LIST,
     TIMER_ID_SYNC_CHAPTER,
     TIMER_ID_WATCH_POS_GT,
+    TIMER_ID_ALWAYS_ON_TOP, /* mod */
 };
 
 static const TVTest::CommandInfo COMMAND_LIST[] = {
@@ -1875,17 +1876,19 @@ void CTvtPlay::ForceEnablePlugin()
 ///
 /*
   "全画面、非アクティブで次のファイルに切り替わるとTVTestのウィンドウが表示される"
-  のを修正。
-  case WM_QUERY_CLOSE_NEXT:の
-  pThis->Close();
-  pThis->OpenCurrent();
-  でm_pApp->SetAlwaysOnTop(fAlwaysOnTop);を連続で実行しないようにm_fHalt_SetAlwaysOnTopで制御する。
+  case WM_QUERY_CLOSE_NEXT:の  Close();  OpenCurrent();
+  でSetAlwaysOnTop();を短時間に実行しないようm_fHalt_SetAlwaysOnTopで制御する。
 */
 void CTvtPlay::SetAlwaysOnTop(bool fAlwaysOnTop, bool fCheckDriver)
 {
   if (m_fHalt_SetAlwaysOnTop) return;
   if (fCheckDriver && IsValidTvtpDriver() == false) return;
+
   m_pApp->SetAlwaysOnTop(fAlwaysOnTop);
+  m_fAlwaysOnTop = fAlwaysOnTop;
+
+  //まれに最前面表示に失敗するので再設定する
+  ::SetTimer(m_hwndFrame, TIMER_ID_ALWAYS_ON_TOP, TIMER_ALWAYS_ON_TOP_INTERVAL, NULL);
 }
 ///
 ///TvtPlayで使用できるドライバーか？
@@ -2660,6 +2663,13 @@ LRESULT CALLBACK CTvtPlay::FrameWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
             ::KillTimer(hwnd, TIMER_ID_WATCH_POS_GT);
             pThis->BeginWatchingNextChapter(false);
             return 0;
+
+        case TIMER_ID_ALWAYS_ON_TOP:/* mod */
+          ::KillTimer(hwnd, TIMER_ID_ALWAYS_ON_TOP);
+          bool cur = pThis->m_pApp->GetAlwaysOnTop();
+          if (cur != pThis->m_fAlwaysOnTop && pThis->IsValidTvtpDriver())
+            pThis->m_pApp->SetAlwaysOnTop(pThis->m_fAlwaysOnTop);
+          return 0;
         }
         break;
     case WM_UPDATE_STATUS:
