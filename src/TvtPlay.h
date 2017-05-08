@@ -92,10 +92,10 @@ private:
     void ForceEnablePlugin();
     bool IsValidTvtpDriver();
     void SetAlwaysOnTop(bool fAlwaysOnTop, bool fCheckDriver);
-    bool m_fHasState_AlwaysOnTop;
-    bool m_fIniState_AlwaysOnTop;
+    bool m_fHasOriginal_AlwaysOnTop;
+    bool m_fOriginal_AlwaysOnTop;
     bool m_fHalt_SetAlwaysOnTop;
-    bool m_fAutoPause_onDriverChanged;
+    bool m_fPauseNow_byDriverChanged;
 
 
 
