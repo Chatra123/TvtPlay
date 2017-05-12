@@ -91,91 +91,154 @@ int CPlaylist::PushBackList(LPCTSTR fullPath)
 
 
 
-//mod
-// FolderAutoPlay
-// フォルダ内のファイルをプレイリストに追加
-// 個人的に利用していないのでOpenDialogからは呼んでいない。 
-//
-// 成功: 加えられた位置, 失敗: 負
-int CPlaylist::PushBackListOrFile_AutoPlay(LPCTSTR path, bool fMovePos)
+///mod
+#include <TCHAR.H>//::_tcsicmp(...);
+#include <string>
+#include <regex>
+using namespace std;
+///
+/// AutoPlay
+///   フォルダ内のファイルをプレイリストに追加
+///   個人的に利用していないのでOpenDialogからは呼んでいない。 
+///
+int CPlaylist::PushBackListOrFile_AutoPlay(LPCTSTR path, bool fMovePos, bool fAutoCorrect)
 {
-  //pathが存在しないとフォルダ内のファイルだけを追加してしまう。
-  if (PathFileExists(path) == FALSE)
-    return 0;
-
-  // カレントからの絶対パスに変換
-  TCHAR fullPath[MAX_PATH];
-  DWORD rv = ::GetFullPathName(path, _countof(fullPath), fullPath, NULL);
-  if (rv == 0 || rv >= MAX_PATH) return -1;
-
-  int pos = -1;
-  if (IsPlayListFile(path)) {
-    // プレイリスト
-    pos = PushBackList(fullPath);
+  wstring fullpath;
+  wstring directory;
+  wstring filename;
+  {
+    // カレントからの絶対パスに変換
+    TCHAR full[MAX_PATH];
+    DWORD rv = ::GetFullPathName(path, _countof(full), full, NULL);
+    if (rv == 0 || rv >= MAX_PATH)
+      return -1;
+    TCHAR dir[MAX_PATH];
+    ::lstrcpyn(dir, full, _countof(dir));
+    ::PathRemoveFileSpec(dir);
+    PathAddBackslash(dir);
+    fullpath = wstring(full);
+    directory = wstring(dir);
+    filename = wstring(PathFindFileName(full));
   }
-  else {
-    // フォルダ内のファイル
-    ClearWithoutCurrent();
-    EraseCurrent();
-    pos = PushBack_CollectedFiles(fullPath);
+  //not found
+  if (!::PathFileExists(fullpath.c_str())) {
+    return 0;
+  }
+
+  //フォルダ内自動再生用のtslist
+  //ファイル名が  _Tvtplay.tslist
+  bool IsSpecialList = regex_match(filename.c_str(), wregex(L".*Tvtplay\\.tslist"));
+
+  const int ListMax = 3;//  -1で制限しない
+  int pos = -1;
+  if (IsMediaFile(fullpath.c_str())) {// TS file
+    if (fAutoCorrect) {
+      //correct file
+      pos = PushBack_CollectFiles(fullpath.c_str(), ListMax);
+    }
+    else {
+      // pathのみ追加
+      PLAY_INFO pi;
+      ::lstrcpyn(pi.path, fullpath.c_str(), _countof(pi.path));
+      pos = static_cast<int>(m_list.size());
+      m_list.push_back(pi);
+    }
+  }
+  else if(IsSpecialList){// TS list
+      //autoplay list
+      pos = PushBack_CollectFiles(directory.c_str(), ListMax);
+  }
+  else if (IsPlayListFile(path)) {
+    pos = PushBackList(fullpath.c_str());
   }
   if (fMovePos && pos >= 0) m_pos = pos;
   return pos;
 }
 
-#include<TCHAR.H>    //::_tcsicmp(...);
 
-// フォルダ内のファイルをプレイリストに追加
-int CPlaylist::PushBack_CollectedFiles(LPCTSTR fullPath)
+///
+///ファイルを収集しプレイリストに追加
+///
+int CPlaylist::PushBack_CollectFiles(const LPCTSTR basepath, const int ListMax)
 {
-  TCHAR dirName[MAX_PATH];
-  ::lstrcpyn(dirName, fullPath, _countof(dirName));
-  ::PathRemoveFileSpec(dirName);
+  ClearWithoutCurrent();
+  EraseCurrent();
 
-  //検索
+  vector<wstring> list = CollectFiles(basepath, ListMax);
+  if (list.size() == 0) return -1;
+
+  for (wstring tspath : list)
+  {
+    PLAY_INFO pi;
+    ::lstrcpyn(pi.path, tspath.c_str(), _countof(pi.path));
+    m_list.emplace_back(pi);
+  }
+  return 0;
+}
+
+
+///
+///dirからファイルを収集
+///
+vector<wstring> CPlaylist::CollectFiles(const LPCTSTR basepath, const int ListMax)
+{
+  vector<wstring> list;
+  TCHAR dir[MAX_PATH] = {};
+  TCHAR name[MAX_PATH] = {};
+  if (PathFileExists(basepath) && !PathIsDirectory(basepath)) {
+    //path is file
+    ::lstrcpyn(dir, basepath, _countof(dir));
+    ::PathRemoveFileSpec(dir);
+    ::lstrcpyn(name, PathFindFileName(basepath), _countof(name));
+  }
+  else if (PathFileExists(basepath)) {
+    //path is dir
+    ::lstrcpyn(dir, basepath, _countof(dir));
+  }
+  else
+    return list;  // not found
+
+  //search files
   TCHAR pattern[MAX_PATH];
-  PathCombine(pattern, dirName, TEXT("*.ts"));
-
+  PathCombine(pattern, dir, TEXT("*.ts"));
   HANDLE hFind;
   WIN32_FIND_DATA fd;
   hFind = FindFirstFile(pattern, &fd);
   if (hFind == INVALID_HANDLE_VALUE)
-    return -1;  // 失敗
-
+    return list;  // 失敗
   //ファイル名の列挙
   do {
     if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
       && !(fd.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN)) {
-      PLAY_INFO pi;
-      if (!::PathCombine(pi.path, dirName, fd.cFileName)) 
-        pi.path[0] = 0;
-      if (::PathFileExists(pi.path))
-        m_list.emplace_back(pi);
+      list.emplace_back(fd.cFileName);
     }
   } while (FindNextFile(hFind, &fd));
 
-  Sort(CPlaylist::SORT_ASC);
+  std::sort(list.begin(), list.end());
 
-  //fullPathのプレイリスト位置を取得
-  size_t pos = 0;
-  for (size_t i = 0; i < m_list.size(); i++)
+  //get index of name
+  size_t index = 0;
+  for (size_t i = 0; i < list.size(); i++)
   {
-    if (::_tcsicmp(m_list[i].path, fullPath) == 0)
-      pos = i;
+    if (::_tcsicmp(list[i].c_str(), name) == 0)
+      index = i;
   }
 
-  //対象ファイル + ２個以外は除去
-  const size_t extra = 2;
-  std::vector<PLAY_INFO> new_list;
-  for (size_t i = 0; i < m_list.size(); i++)
+  //trim list
+  vector<wstring> list2;
+  for (size_t i = 0; i < list.size(); i++)
   {
-    if (i < pos) continue;
-    if (pos + extra < i) continue;
-    new_list.emplace_back(m_list[i]);
+    //nameの前後をカット
+    if (0 < ListMax)
+    {
+      if (i < index) continue;
+      if (index + ListMax <= i) continue;
+    }
+    TCHAR fullpath[MAX_PATH] = {};
+    PathCombine(fullpath, dir, list[i].c_str());
+    list2.emplace_back(fullpath);
   }
-
-  m_list = std::vector<PLAY_INFO>(new_list);
-  return 0;
+  return list2;
 }
 
 

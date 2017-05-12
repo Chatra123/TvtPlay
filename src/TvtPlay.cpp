@@ -1035,7 +1035,7 @@ bool CTvtPlay::OpenWithPopup(const POINT &pt, UINT flags)
 
         //mod
         //フォルダ名をリストの先頭に追加
-       TCHAR folderName[MAX_PATH];
+        TCHAR folderName[MAX_PATH];
         ::lstrcpy(folderName, pattern);
         ::PathRemoveFileSpec(folderName);
         ::PathStripPath(folderName);
@@ -1073,7 +1073,7 @@ bool CTvtPlay::OpenWithPopup(const POINT &pt, UINT flags)
         ::PathCombine(fileName, pattern, nameList[skipSize+selID-1])) {
         //return m_playlist.PushBackListOrFile(fileName, true) >= 0 ? OpenCurrent() : false;
         //mod
-        return m_playlist.PushBackListOrFile_AutoPlay(fileName, true) >= 0 ? OpenCurrent() : false;
+        return m_playlist.PushBackListOrFile_AutoPlay(fileName, true, true) >= 0 ? OpenCurrent() : false;
     }
     return false;
 }
@@ -2447,23 +2447,19 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
 
         //mod 
         /*
-        ・ＴＳファイルパスだけでプラグインを自動で有効にする。
-          パスがあればAnalyzeCommandLine()関数内で m_fForceEnable = true になっている。
-
-        ・コマンドラインの /tvtplay が必要なくなる。
+        ・パスがあればAnalyzeCommandLine()関数内で m_fForceEnable = true になっている。
         ・case TVTest::EVENT_EXECUTE:から FALL THROUGH!でも実行される。
-          多重起動禁止のTVTestから送られるコマンドラインでも再生されるようになる。
+        ・多重起動禁止のTVTestから送られるコマンドラインでも再生できるようになる。
         */
+        //プレイリストに追加
         if (pThis->m_fForceEnable) {
           if (pThis->m_szSpecFileName[0]) {
-            if (pThis->m_playlist.PushBackListOrFile_AutoPlay(pThis->m_szSpecFileName, true) >= 0) {
+            if (pThis->m_playlist.PushBackListOrFile_AutoPlay(pThis->m_szSpecFileName, true, true) >= 0) {
               pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
             }
             pThis->m_szSpecFileName[0] = 0;
           }
         }
-
-
         break;
     case TVTest::EVENT_STATUSITEM_DRAW:
         // ステータス項目の描画
@@ -2596,11 +2592,11 @@ BOOL CALLBACK CTvtPlay::WindowMsgCallback(HWND hwnd, UINT uMsg, WPARAM wParam, L
                 //　mediaが１つ   -->  フォルダ内のファイル収集
                 //  複数 or list  -->  ドロップされたファイルのみ追加
                 if (media_num == 1) {
-                  if (pThis->m_playlist.PushBackListOrFile_AutoPlay(fileName, !fAdded) >= 0)
+                  if (pThis->m_playlist.PushBackListOrFile_AutoPlay(fileName, !fAdded, true) >= 0)
                     fAdded = true;
                 }
                 else {
-                  if (pThis->m_playlist.PushBackListOrFile(fileName, !fAdded) >= 0)
+                  if (pThis->m_playlist.PushBackListOrFile_AutoPlay(fileName, !fAdded, false) >= 0)
                     fAdded = true;
                 }
 

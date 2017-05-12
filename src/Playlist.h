@@ -34,15 +34,12 @@ private:
     size_t m_pos;
 
 
-
-
-    //mod
+//mod
 public:
-    int PushBackListOrFile_AutoPlay(LPCTSTR path, bool fMovePos);
+    int PushBackListOrFile_AutoPlay(LPCTSTR path, bool fMovePos, bool fAutoCorrect);
 private:
-    int PushBack_CollectedFiles(LPCTSTR fullPath);
-
-
+    int PushBack_CollectFiles(const LPCTSTR path, const int ListMax);
+    std::vector<std::wstring> CollectFiles(const LPCTSTR path, const int ListMax);
 
 };
 
