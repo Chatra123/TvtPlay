@@ -260,6 +260,8 @@ void CTvtPlay::AnalyzeCommandLine(LPCWSTR cmdLine, bool fIgnoreFirst)
                         m_specStretchID = stid;
                     }
                 }
+                /* mod */
+                else if (!::lstrcmpi(argv[i] + 1, TEXT("tvtpautoplay"))) m_fAutoPlay = true;
             }
         }
 
@@ -292,6 +294,7 @@ bool CTvtPlay::Initialize()
     m_fInfoPaused = true;
     m_fHalt_SetAlwaysOnTop = false;
     m_fPauseNow_byDriverChanged = false;
+    m_fAutoPlay = false;
     //TVTestにドロップ受け入れ
     ::DragAcceptFiles(m_pApp->GetAppWindow(), TRUE);
     m_pApp->SetWindowMessageCallback(WindowMsgCallback, this);
@@ -2460,6 +2463,33 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
             pThis->m_szSpecFileName[0] = 0;
           }
         }
+
+        //Popupフォルダを再生
+        if (pThis->m_fAutoPlay)
+        {
+          pThis->m_fAutoPlay = false;
+          //プラグインを有効化してiniを読み込む
+          pThis->ForceEnablePlugin();
+
+          TCHAR Popup[MAX_PATH];
+          if (!::StrCmpNI(pThis->m_szPopupPattern, TEXT("%RecordFolder%"), 14)) {
+            if (pThis->m_pApp->GetSetting(L"RecordFolder", Popup, _countof(Popup)) <= 0) Popup[0] = 0;
+            ::PathAppend(Popup, pThis->m_szPopupPattern + 14);
+          }
+          else {
+            ::lstrcpy(Popup, pThis->m_szPopupPattern);
+          }
+          TCHAR dir[MAX_PATH];
+          ::lstrcpyn(dir, Popup, _countof(dir));
+          ::PathRemoveFileSpec(dir);
+          ::PathAddBackslash(dir);
+
+          if (pThis->m_playlist.PushBackListOrFile_AutoPlay(dir, true, true) >= 0) {
+            pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
+          }
+        }
+
+
         break;
     case TVTest::EVENT_STATUSITEM_DRAW:
         // ステータス項目の描画

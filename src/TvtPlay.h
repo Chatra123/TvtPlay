@@ -98,7 +98,7 @@ private:
     bool m_fOriginal_AlwaysOnTop;
     bool m_fHalt_SetAlwaysOnTop;
     bool m_fPauseNow_byDriverChanged;
-
+    bool m_fAutoPlay;
 
 
     // 初期パラメータ
