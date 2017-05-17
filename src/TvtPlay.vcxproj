@@ -165,6 +165,7 @@
     <ClInclude Include="CaptionAnalyzer.h" />
     <ClInclude Include="ChapterMap.h" />
     <ClInclude Include="DrawUtil.h" />
+    <ClInclude Include="CyclePopMenu.h" />
     <ClInclude Include="Playlist.h" />
     <ClInclude Include="ReadOnlyFile.h" />
     <ClInclude Include="ReadOnlyMpeg4File.h" />

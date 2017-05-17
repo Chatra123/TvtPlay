@@ -9,6 +9,7 @@
 #include <vector>
 #include <map>
 #include <process.h>
+#include <regex>
 #include "Util.h"
 #include "StatusView.h"
 #include "TsSender.h"
@@ -26,6 +27,7 @@
 #define TVTEST_PLUGIN_CLASS_IMPLEMENT
 #define TVTEST_PLUGIN_VERSION TVTEST_PLUGIN_VERSION_(0,0,14)
 #include "TVTestPlugin.h"
+#include "CyclePopMenu.h"/*mod*/
 #include "TvtPlay.h"
 
 #define INFO_DESCRIPTION_SUFFIX L"+)"
@@ -296,6 +298,7 @@ bool CTvtPlay::Initialize()
     m_fPauseNow_byDriverChanged = false;
     m_fAutoPlay = false;
     //TVTestにドロップ受け入れ
+    //プラグイン有効、無効に関係なく受け入れる
     ::DragAcceptFiles(m_pApp->GetAppWindow(), TRUE);
     m_pApp->SetWindowMessageCallback(WindowMsgCallback, this);
 
@@ -422,8 +425,14 @@ void CTvtPlay::LoadSettings()
         m_fUpdateHashList   = GetBufferedProfileInt(pBuf, TEXT("FileInfoAutoUpdate"), 0) != 0;
         m_popupMax          = GetBufferedProfileInt(pBuf, TEXT("PopupMax"), 30);
         m_fPopupDesc        = GetBufferedProfileInt(pBuf, TEXT("PopupDesc"), 0) != 0;
+
         GetBufferedProfileString(pBuf, TEXT("PopupPattern"), TEXT("%RecordFolder%*.ts"), m_szPopupPattern, _countof(m_szPopupPattern));
         GetBufferedProfileString(pBuf, TEXT("ChaptersFolderName"), TEXT("chapters"), m_szChaptersDirName, _countof(m_szChaptersDirName));
+
+        /* mod */
+        GetBufferedProfileString(pBuf, TEXT("PopupPattern1"), L"", m_szPopupPattern1, _countof(m_szPopupPattern1));
+        GetBufferedProfileString(pBuf, TEXT("PopupPattern2"), L"", m_szPopupPattern2, _countof(m_szPopupPattern2));
+        m_SelPopupPattern = GetBufferedProfileInt(pBuf, TEXT("SelPopupPattern"), 0);
 #ifdef EN_SWC
         GetBufferedProfileString(pBuf, TEXT("CaptionDll"), TEXT("Plugins\\TvtPlay_Caption.dll"), m_szCaptionDllPath, _countof(m_szCaptionDllPath));
         m_slowerWithCaption = GetBufferedProfileInt(pBuf, TEXT("SlowerWithCaption"), 0);
@@ -602,6 +611,10 @@ void CTvtPlay::SaveFileInfoSetting(const std::list<HASH_INFO> &hashList) const
     }
     p[0] = 0;
     ::WritePrivateProfileSection(TEXT("FileInfo"), &buf.front(), m_szIniFileName);
+
+    /*mod*/
+    WritePrivateProfileInt(SETTINGS, TEXT("SelPopupPattern"), m_SelPopupPattern, m_szIniFileName);
+
 }
 
 // ファイル固有情報を更新する
@@ -737,6 +750,22 @@ bool CTvtPlay::InitializePlugin()
 
     //mod off
     //::DragAcceptFiles(m_pApp->GetAppWindow(), TRUE);
+
+    /*
+    mod
+    ポップアップ用のフォルダを追加
+    */
+    wstring recFolder;
+    TCHAR recf[MAX_PATH] = {};
+    if (m_pApp->GetSetting(L"RecordFolder", recf, _countof(recf)) > 0)
+      recFolder = wstring(recf);
+    wstring ptn0 = std::regex_replace(m_szPopupPattern, wregex(L"%RecordFolder%"), recFolder);
+    wstring ptn1 = std::regex_replace(m_szPopupPattern1, wregex(L"%RecordFolder%"), recFolder);
+    wstring ptn2 = std::regex_replace(m_szPopupPattern2, wregex(L"%RecordFolder%"), recFolder);
+    vector<wstring> pattern{ ptn0, ptn1, ptn2 };
+    m_cyclePop.Init(pattern);
+    m_cyclePop.Next(m_SelPopupPattern);
+
 
     m_fInitialized = true;
     return true;
@@ -993,93 +1022,147 @@ bool CTvtPlay::OpenWithDialog()
 }
 
 
+
+
+
+
+
+
+
 // ポップアップメニュー選択でファイルを開く
 bool CTvtPlay::OpenWithPopup(const POINT &pt, UINT flags)
 {
     if (m_popupMax <= 0) return false;
 
-    // 特定指示子をTVTestの保存先フォルダに置換する(手抜き)
-    TCHAR pattern[MAX_PATH];
-    if (!::StrCmpNI(m_szPopupPattern, TEXT("%RecordFolder%"), 14)) {
-        if (m_pApp->GetSetting(L"RecordFolder", pattern, _countof(pattern)) <= 0) pattern[0] = 0;
-        ::PathAppend(pattern, m_szPopupPattern + 14);
-    }
-    else {
-        ::lstrcpy(pattern, m_szPopupPattern);
-    }
+  wstring playNow_path;
+  auto playlist = m_playlist.Get();
+  if (playlist.empty() == false)
+    playNow_path = wstring(playlist[m_playlist.GetPosition()].path);
 
-    // ファイルリスト取得
-    std::vector<WIN32_FIND_DATA> findList;
-    WIN32_FIND_DATA findData;
-    HANDLE hFind = ::FindFirstFile(pattern, &findData);
-    if (hFind != INVALID_HANDLE_VALUE) {
-        findList.push_back(findData);
-        for (int i = 0; i < POPUP_MAX_MAX; ++i) {
-            if (!::FindNextFile(hFind, &findData)) break;
-             findList.push_back(findData);
-        }
-        ::FindClose(hFind);
-    }
-    int listSize = static_cast<int>(findList.size());
+  wstring playNext;
+  HMENU hmenu = nullptr;
+  int selID = -1;
+  while (true) {
+    m_cyclePop.CreateMenu(hmenu, playNow_path);
 
-    // ファイル名を昇順or降順ソート
-    std::vector<LPCTSTR> nameList(listSize);
-    for (int i = 0; i < listSize; ++i) nameList[i] = findList[i].cFileName;
-    std::sort(nameList.begin(), nameList.end(), [](LPCTSTR a, LPCTSTR b) { return ::lstrcmpi(a, b) < 0; });
-    if (m_fPopupDesc) std::reverse(nameList.begin(), nameList.end());
-
-    // ポップアップしない部分をとばす
-    int skipSize = max(listSize - m_popupMax, 0);
-
-    // メニュー生成
-    int selID = 0;
-    HMENU hmenu = ::CreatePopupMenu();
     if (hmenu) {
-
-        //mod
-        //フォルダ名をリストの先頭に追加
-        TCHAR folderName[MAX_PATH];
-        ::lstrcpy(folderName, pattern);
-        ::PathRemoveFileSpec(folderName);
-        ::PathStripPath(folderName);
-        if (hFind != INVALID_HANDLE_VALUE)
-          ::AppendMenu(hmenu, MF_STRING | MF_GRAYED, 0, folderName);
-
-
-        if (listSize <= 0) {
-            ::AppendMenu(hmenu, MF_STRING | MF_GRAYED, 0, TEXT("(なし)"));
-        }
-        else {
-            for (int i = 0; skipSize+i < listSize; ++i) {
-                TCHAR str[64];
-                ::lstrcpyn(str, nameList[skipSize+i], 64);
-                if (::lstrlen(str) == 63) ::lstrcpy(&str[60], TEXT("..."));
-                // プレフィクス対策
-                for (LPTSTR p = str; *p; p++)
-                    if (*p == TEXT('&')) *p = TEXT('_');
-                ::AppendMenu(hmenu, MF_STRING, i + 1, str);
-            }
-            //mod
-            //リストの最後に空行挿入
-            //  - 空行を選択するとリストを非表示にできる。
-            //  - ボタンを２回押したときにすぐにファイル選択をしないようにする。
-            //    デスクトップ下部だとバーのボタンとリストが重なる。
-            ::AppendMenu(hmenu, MF_STRING, 0, L"");
-        }
-        selID = TrackPopup(hmenu, pt, flags);
+      selID = TrackPopup(hmenu, pt, flags);
+      if (selID == 0) {// cancel, click outer area
+        break;
+      }
+      else if (selID == 1) {// click folder item
+        m_SelPopupPattern = m_cyclePop.Next();
         ::DestroyMenu(hmenu);
+        continue;
+      }
+      else if (2 <= selID)// click file item
+      {
+        playNext = m_cyclePop.GetSelectedFile(selID);
+        break;
+      }
     }
+  }
+  if (hmenu)
+    ::DestroyMenu(hmenu);
 
-    TCHAR fileName[MAX_PATH];
-    if (selID > 0 && skipSize+selID-1 < listSize &&
-        ::PathRemoveFileSpec(pattern) &&
-        ::PathCombine(fileName, pattern, nameList[skipSize+selID-1])) {
-        //return m_playlist.PushBackListOrFile(fileName, true) >= 0 ? OpenCurrent() : false;
-        //mod
-        return m_playlist.PushBackListOrFile_AutoPlay(fileName, true, true) >= 0 ? OpenCurrent() : false;
-    }
+  if (playNext.empty() == false)
+    return m_playlist.PushBackListOrFile_AutoPlay(playNext.c_str(), true, true) >= 0 ? OpenCurrent() : false;
+  else
     return false;
 }
+
+//bool CTvtPlay::OpenWithPopup(const POINT &pt, UINT flags)
+//{
+//    if (m_popupMax <= 0) return false;
+//
+//    // 特定指示子をTVTestの保存先フォルダに置換する(手抜き)
+//    TCHAR pattern[MAX_PATH];
+//    if (!::StrCmpNI(m_szPopupPattern, TEXT("%RecordFolder%"), 14)) {
+//        if (m_pApp->GetSetting(L"RecordFolder", pattern, _countof(pattern)) <= 0) pattern[0] = 0;
+//        ::PathAppend(pattern, m_szPopupPattern + 14);
+//    }
+//    else {
+//        ::lstrcpy(pattern, m_szPopupPattern);
+//    }
+//
+//    // ファイルリスト取得
+//    std::vector<WIN32_FIND_DATA> findList;
+//    WIN32_FIND_DATA findData;
+//    HANDLE hFind = ::FindFirstFile(pattern, &findData);
+//    if (hFind != INVALID_HANDLE_VALUE) {
+//        findList.push_back(findData);
+//        for (int i = 0; i < POPUP_MAX_MAX; ++i) {
+//            if (!::FindNextFile(hFind, &findData)) break;
+//             findList.push_back(findData);
+//        }
+//        ::FindClose(hFind);
+//    }
+//    int listSize = static_cast<int>(findList.size());
+//
+//    // ファイル名を昇順or降順ソート
+//    std::vector<LPCTSTR> nameList(listSize);
+//    for (int i = 0; i < listSize; ++i) nameList[i] = findList[i].cFileName;
+//    std::sort(nameList.begin(), nameList.end(), [](LPCTSTR a, LPCTSTR b) { return ::lstrcmpi(a, b) < 0; });
+//    if (m_fPopupDesc) std::reverse(nameList.begin(), nameList.end());
+//
+//    // ポップアップしない部分をとばす
+//    int skipSize = max(listSize - m_popupMax, 0);
+//
+//    // メニュー生成
+//    int selID = 0;
+//    HMENU hmenu = ::CreatePopupMenu();
+//    if (hmenu) {
+//
+//        //mod
+//        //フォルダ名をリストの先頭に追加
+//        TCHAR folderName[MAX_PATH];
+//        ::lstrcpy(folderName, pattern);
+//        ::PathRemoveFileSpec(folderName);
+//        ::PathStripPath(folderName);
+//        if (hFind != INVALID_HANDLE_VALUE)
+//          ::AppendMenu(hmenu, MF_STRING | MF_GRAYED, 0, folderName);
+//
+//
+//        if (listSize <= 0) {
+//            ::AppendMenu(hmenu, MF_STRING | MF_GRAYED, 0, TEXT("(なし)"));
+//        }
+//        else {
+//            for (int i = 0; skipSize+i < listSize; ++i) {
+//                TCHAR str[64];
+//                ::lstrcpyn(str, nameList[skipSize+i], 64);
+//                if (::lstrlen(str) == 63) ::lstrcpy(&str[60], TEXT("..."));
+//                // プレフィクス対策
+//                for (LPTSTR p = str; *p; p++)
+//                    if (*p == TEXT('&')) *p = TEXT('_');
+//                ::AppendMenu(hmenu, MF_STRING, i + 1, str);
+//            }
+//            //mod
+//            //リストの最後に空行挿入
+//            //  - 空行を選択するとリストを非表示にできる。
+//            //  - ボタンを２回押したときにすぐにファイル選択をしないようにする。
+//            //    デスクトップ下部だとバーのボタンとリストが重なる。
+//            ::AppendMenu(hmenu, MF_STRING, 0, L"");
+//        }
+//        selID = TrackPopup(hmenu, pt, flags);
+//        ::DestroyMenu(hmenu);
+//    }
+//
+//    TCHAR fileName[MAX_PATH];
+//    if (selID > 0 && skipSize+selID-1 < listSize &&
+//        ::PathRemoveFileSpec(pattern) &&
+//        ::PathCombine(fileName, pattern, nameList[skipSize+selID-1])) {
+//        //return m_playlist.PushBackListOrFile(fileName, true) >= 0 ? OpenCurrent() : false;
+//        //mod
+//        return m_playlist.PushBackListOrFile_AutoPlay(fileName, true, true) >= 0 ? OpenCurrent() : false;
+//    }
+//    return false;
+//}
+
+
+
+
+
+
 
 
 // ポップアップメニュー選択で再生リストのファイルを開く
@@ -1100,7 +1183,7 @@ bool CTvtPlay::OpenWithPlayListPopup(const POINT &pt, UINT flags)
             //mod
             //プレイリスト操作のコマンドはメニューから除去
             hmenu = ::CreatePopupMenu();
-            ::AppendMenu(hmenu, MF_STRING | MF_GRAYED, 0, L"Playlist");
+            ::AppendMenu(hmenu, MF_STRING | MF_GRAYED, 0, L"[ Playlist ]");
 
             std::vector<CPlaylist::PLAY_INFO>::const_iterator it = m_playlist.Get().begin();
             for (int cmdID = 1; it != m_playlist.Get().end() && cmdID <= 10000; ++cmdID, ++it) {
@@ -1125,7 +1208,7 @@ bool CTvtPlay::OpenWithPlayListPopup(const POINT &pt, UINT flags)
                 ::InsertMenuItem(hmenu, cmdID, TRUE, &mi);
             }
             //mod
-            //リストの最後に空行挿入
+            //空行挿入
             ::AppendMenu(hmenu, MF_STRING, 0, L"");
         }
         selID = TrackPopup(hmenu, pt, flags);

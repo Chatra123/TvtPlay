@@ -93,12 +93,19 @@ private:
     void ForceEnablePlugin();
     bool IsValidTvtpDriver();
     void SetAlwaysOnTop(bool fAlwaysOnTop, bool fCheckDriver);
+
     bool m_fAlwaysOnTop;
     bool m_fHasOriginal_AlwaysOnTop;
     bool m_fOriginal_AlwaysOnTop;
     bool m_fHalt_SetAlwaysOnTop;
     bool m_fPauseNow_byDriverChanged;
     bool m_fAutoPlay;
+    
+    CyclePopMenu m_cyclePop;
+    TCHAR m_szPopupPattern1[MAX_PATH];
+    TCHAR m_szPopupPattern2[MAX_PATH];
+    int m_SelPopupPattern;
+
 
 
     // 初期パラメータ
