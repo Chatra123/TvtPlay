@@ -94,48 +94,48 @@ int CPlaylist::PushBackList(LPCTSTR fullPath)
 ///mod
 #include <TCHAR.H>//::_tcsicmp(...);
 #include <string>
+#include <deque>
 #include <regex>
 using namespace std;
 ///
 /// AutoPlay
 ///   フォルダ内のファイルをプレイリストに追加
-///   個人的に利用していないのでOpenDialogからは呼んでいない。 
+///   利用することが無いのでOpenDialogからは呼んでいない。 
 ///
-int CPlaylist::PushBackListOrFile_AutoPlay(LPCTSTR path, bool fMovePos, bool fAutoCorrect)
+int CPlaylist::PushBackListOrFile_AutoPlay(LPCTSTR path, bool fMovePos, bool fAutoCorrect = false)
 {
   // カレントからの絶対パスに変換
   TCHAR fullpath[MAX_PATH];
   DWORD rv = ::GetFullPathName(path, _countof(fullpath), fullpath, NULL);
   if (rv == 0 || rv >= MAX_PATH)
     return -1;
-  //not found
-  if (!::PathFileExists(fullpath)) {
-    return 0;
+  bool isPattern = _tcsstr(fullpath, TEXT("*")) != NULL;
+  if (PathFileExists(fullpath) == false && isPattern == false)
+    return -1;  // not found
+
+
+  const size_t ListMax = 3;//-1で制限しない
+  int pos = -1;
+  if (isPattern && fAutoCorrect) {
+    //pattern
+    pos = PushBackCollectedFiles(fullpath, ListMax);
+  }
+  else if (IsMediaFile(fullpath)) {
+    //file path
+    if (fAutoCorrect)
+      pos = PushBackCollectedFiles(fullpath, ListMax);
+    else // add 1 file
+      pos = PushBackListOrFile(fullpath, fMovePos);
+  }
+  else if (IsPlayListFile(path)) {
+    //tslist
+    pos = PushBackListOrFile(fullpath, fMovePos);
+  }
+  else if(PathIsDirectory(fullpath) && fAutoCorrect){
+    //directory
+    pos = PushBackCollectedFiles(fullpath, ListMax);
   }
 
-  const int ListMax = 3;//  -1で制限しない
-  int pos = -1;
-  //ts file
-  if (IsMediaFile(fullpath)) {
-    if (fAutoCorrect) {
-      pos = PushBack_CollectFiles(fullpath, ListMax);
-    }
-    else {
-      // pathのみ追加
-      PLAY_INFO pi;
-      ::lstrcpyn(pi.path, fullpath, _countof(pi.path));
-      pos = static_cast<int>(m_list.size());
-      m_list.push_back(pi);
-    }
-  }
-  //tslist
-  else if (IsPlayListFile(path)) {
-    pos = PushBackList(fullpath);
-  }
-  //directory
-  else if(PathIsDirectory(fullpath) && fAutoCorrect){
-    pos = PushBack_CollectFiles(fullpath, ListMax);
-  }
   if (fMovePos && pos >= 0) m_pos = pos;
   return pos;
 }
@@ -144,56 +144,64 @@ int CPlaylist::PushBackListOrFile_AutoPlay(LPCTSTR path, bool fMovePos, bool fAu
 ///
 ///ファイルを収集しプレイリストに追加
 ///
-int CPlaylist::PushBack_CollectFiles(const LPCTSTR basepath, const int ListMax)
+int CPlaylist::PushBackCollectedFiles(const LPCTSTR path, const size_t ListMax)
 {
   ClearWithoutCurrent();
   EraseCurrent();
 
-  vector<wstring> list = CollectFiles(basepath, ListMax);
-  if (list.size() == 0) return -1;
+  vector<wstring> list;
+  int pos = CollectFiles(list , path, ListMax);
+  if (list.empty()) return -1;
 
-  for (wstring tspath : list)
-  {
+  for (wstring tspath : list) {
     PLAY_INFO pi;
     ::lstrcpyn(pi.path, tspath.c_str(), _countof(pi.path));
     m_list.emplace_back(pi);
   }
-  return 0;
+  return pos;
 }
 
 
 ///
-///dirからファイルを収集
+///ファイルを収集
 ///
-/// basepath :  file path or directory path
-vector<wstring> CPlaylist::CollectFiles(const LPCTSTR basepath, const int ListMax)
+int CPlaylist::CollectFiles(vector<wstring> &list, const LPCTSTR path, const size_t ListMax)
 {
-  vector<wstring> list;
-
   TCHAR dir[MAX_PATH] = {};
   TCHAR name[MAX_PATH] = {};
-  if (PathFileExists(basepath) && !PathIsDirectory(basepath)) {
-    //path is file
-    ::lstrcpyn(dir, basepath, _countof(dir));
+  TCHAR pattern[MAX_PATH] = {};
+  if (_tcsstr(path, TEXT("*")) != NULL) {
+    //is pattern
+    ::lstrcpyn(dir, path, _countof(dir));
     ::PathRemoveFileSpec(dir);
-    ::lstrcpyn(name, PathFindFileName(basepath), _countof(name));
+    ::lstrcpyn(pattern, path, _countof(pattern));
   }
-  else if (PathFileExists(basepath)) {
-    //path is dir
-    ::lstrcpyn(dir, basepath, _countof(dir));
+  else if (PathFileExists(path) && !PathIsDirectory(path)) {
+    //is file path
+    ::lstrcpyn(dir, path, _countof(dir));
+    ::PathRemoveFileSpec(dir);
+    ::PathAddBackslash(dir);
+    ::lstrcpyn(name, PathFindFileName(path), _countof(name));
+    ::lstrcpyn(pattern, dir, _countof(pattern));
+    ::PathCombine(pattern, dir, TEXT("*.ts"));
+  }
+  else if (PathFileExists(path)) {
+    //is dir path
+    ::lstrcpyn(dir, path, _countof(dir));
+    ::PathAddBackslash(dir);
+    ::lstrcpyn(pattern, dir, _countof(pattern));
+    ::PathCombine(pattern, dir, TEXT("*.ts"));
   }
   else
-    return list;  // not found
+    return -1;  // not found
 
   //search files
-  TCHAR pattern[MAX_PATH] = {};
-  PathCombine(pattern, dir, TEXT("*.ts"));
   HANDLE hFind;
   WIN32_FIND_DATA fd;
   hFind = FindFirstFile(pattern, &fd);
   if (hFind == INVALID_HANDLE_VALUE)
-    return list;  // 失敗
-  //ファイル名の列挙
+    return -1;  // 失敗
+  list.clear();
   do {
     if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
       && !(fd.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN)) {
@@ -207,31 +215,39 @@ vector<wstring> CPlaylist::CollectFiles(const LPCTSTR basepath, const int ListMa
   std::sort(list.begin(), list.end(), 
     [](const wstring a, const wstring b) { return ::lstrcmpi(a.c_str(), b.c_str()) < 0; });
 
-  //get index of name
-  size_t index = 0;
-  for (size_t i = 0; i < list.size(); i++)
-  {
+  //index at list
+  size_t path_idx = 0;
+  for (size_t i = 0; i < list.size(); i++) {
     if (::_tcsicmp(list[i].c_str(), name) == 0)
-      index = i;
+      path_idx = i;
   }
 
   //trim list
-  vector<wstring> list2;
-  for (size_t i = 0; i < list.size(); i++)
-  {
-    //nameの前後をカット
-    if (0 < ListMax)
-    {
-      if (i < index) continue;
-      if (index + ListMax <= i) continue;
-    }
-    TCHAR fullpath[MAX_PATH] = {};
-    PathCombine(fullpath, dir, list[i].c_str());
-    list2.emplace_back(fullpath);
+  deque<wstring> que;
+  for (size_t i = path_idx; i < list.size(); i++) {
+    if (que.size() < ListMax)
+      que.push_back(list[i].c_str());
   }
-  return list2;
-}
+  for (int i = (int)path_idx - 1; 0 <= i; i--) {
+    if (que.size() < ListMax)
+      que.push_front(list[i].c_str());
+  }
 
+  //index at que
+  path_idx = 0;
+  for (size_t i = 0; i < que.size(); i++) {
+    if (::_tcsicmp(que[i].c_str(), name) == 0)
+      path_idx = i;
+  }
+
+  list.clear();
+  for (wstring fname : que) {
+    TCHAR fullpath[MAX_PATH] = {};
+    PathCombine(fullpath, dir, fname.c_str());
+    list.push_back(fullpath);
+  }
+  return static_cast<int>(path_idx);
+}
 
 
 

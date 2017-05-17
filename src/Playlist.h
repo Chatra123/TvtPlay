@@ -38,9 +38,8 @@ private:
 public:
     int PushBackListOrFile_AutoPlay(LPCTSTR path, bool fMovePos, bool fAutoCorrect);
 private:
-    int PushBack_CollectFiles(const LPCTSTR path, const int ListMax);
-    std::vector<std::wstring> CollectFiles(const LPCTSTR path, const int ListMax);
-
+    int PushBackCollectedFiles(const LPCTSTR path, const size_t ListMax);
+    int CollectFiles(std::vector<std::wstring> &list, const LPCTSTR path, const size_t ListMax);
 };
 
 #endif
