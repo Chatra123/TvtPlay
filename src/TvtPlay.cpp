@@ -222,7 +222,11 @@ bool CTvtPlay::GetPluginInfo(TVTest::PluginInfo *pInfo)
 {
     // プラグインの情報を返す
     pInfo->Type           = TVTest::PLUGIN_TYPE_NORMAL;
-    pInfo->Flags          = TVTest::PLUGIN_FLAG_DISABLEONSTART;
+    /*
+    mod
+    DISABLEONSTARTをはずした
+    */
+    //pInfo->Flags          = TVTest::PLUGIN_FLAG_DISABLEONSTART;
     pInfo->pszPluginName  = INFO_PLUGIN_NAME;
     pInfo->pszCopyright   = L"Public Domain";
     pInfo->pszDescription = INFO_DESCRIPTION;
@@ -750,7 +754,13 @@ bool CTvtPlay::InitializePlugin()
 
     //mod off
     //::DragAcceptFiles(m_pApp->GetAppWindow(), TRUE);
-
+    /*
+    mod
+    DISABLEONSTARTをはずした
+     - DISABLEONSTARTをやめてTVTest::STATUS_ITEM_EVENT_VISIBILITYCHANGED:を呼ばれる必要がなくなったため
+       初期化処理で呼ぶ
+    */
+    SetWidthPositionItem();
     /*
     mod
     ポップアップ用のフォルダを追加
@@ -2605,14 +2615,19 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
             case TVTest::STATUS_ITEM_EVENT_CREATED:
                 // 項目が作成された
                 {
+              /*
+              mod
+              PLUGIN_FLAG_DISABLEONSTARTをはずした
+                - 非表示にしないようにコメントアウト      
+              */
                     // ここでは常に非表示にしておく
-                    TVTest::StatusItemSetInfo info;
-                    info.Size = sizeof(info);
-                    info.Mask = TVTest::STATUS_ITEM_SET_INFO_MASK_STATE;
-                    info.ID = 1;
-                    info.StateMask = TVTest::STATUS_ITEM_STATE_VISIBLE;
-                    info.State = 0;
-                    pThis->m_pApp->SetStatusItem(&info);
+                    ////TVTest::StatusItemSetInfo info;
+                    ////info.Size = sizeof(info);
+                    ////info.Mask = TVTest::STATUS_ITEM_SET_INFO_MASK_STATE;
+                    ////info.ID = 1;
+                    ////info.StateMask = TVTest::STATUS_ITEM_STATE_VISIBLE;
+                    ////info.State = 0;
+                    ////pThis->m_pApp->SetStatusItem(&info);
                 }
                 return TRUE;
             case TVTest::STATUS_ITEM_EVENT_VISIBILITYCHANGED:
