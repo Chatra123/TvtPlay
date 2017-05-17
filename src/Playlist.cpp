@@ -102,7 +102,7 @@ using namespace std;
 ///   フォルダ内のファイルをプレイリストに追加
 ///   利用することが無いのでOpenDialogからは呼んでいない。 
 ///
-int CPlaylist::PushBackListOrFile_AutoPlay(LPCTSTR path, bool fMovePos, bool fAutoCorrect = false)
+int CPlaylist::PushBackListOrFile_AutoPlay(LPCTSTR path, bool fMovePos, bool fAutoCorrect)
 {
   // カレントからの絶対パスに変換
   TCHAR fullpath[MAX_PATH];
