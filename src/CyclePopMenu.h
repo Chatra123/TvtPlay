@@ -52,9 +52,9 @@ public:
   //ポップアップメニュー作成
   //
   /*
-    ID = 0      ohter
-    ID = 1      folder item
-    ID = 10+    file item
+    Menu ID = 0      cancel menu
+            = 1      select folder
+            = 10+    select file
   */
   const UINT MenuIDOffset = 10;
   void CreateMenu(HMENU &hmenu, const wstring playing_path)
@@ -66,11 +66,10 @@ public:
       return;
     }
 
-    const int PopMax = 8;
-    vector<wstring> names = GetFileNames(Patterns[Page]);
-    if(PopMax < names.size())
-      names.resize(PopMax);
-    FileNames = names;
+    const int PopMax = 8;//iniのPopupMaxは無視
+    FileNames = GetFileNames(Patterns[Page]);
+    if (0 < PopMax && PopMax < FileNames.size())
+      FileNames.resize(PopMax);
 
     const fs::path folderPath = Folders[Page];
     wstring label = wstring(L"[ ") + wstring(folderPath.filename()) + L" ]";
@@ -109,13 +108,13 @@ public:
         ::InsertMenuItem(hmenu, i + 1, TRUE, &mi);
       }
     }
-    //空行挿入
+
+    //”次フォルダへ移動”を挿入
     //  - デスクトップ下部だとマウス直下にメニューがくる。
-    //  - ２回クリックしたときにすぐにファイル選択をしないようにする。
-    ::AppendMenu(hmenu, MF_STRING, 0, L"");
-    return;
+    //  - ２回クリックしたときにファイル選択しないように挿入する。
+    ::AppendMenu(hmenu, MF_STRING, 1, L"");
   }
-  
+
   //
   //ファイル名を取得
   //
