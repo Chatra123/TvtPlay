@@ -757,7 +757,7 @@ bool CTvtPlay::InitializePlugin()
     /*
     mod
     DISABLEONSTARTをはずした
-     - DISABLEONSTARTをやめてTVTest::STATUS_ITEM_EVENT_VISIBILITYCHANGED:を呼ばれる必要がなくなったため
+     - DISABLEONSTARTをやめてTVTest::STATUS_ITEM_EVENT_VISIBILITYCHANGED:が呼ばれなくなったので
        初期化処理で呼ぶ
     */
     SetWidthPositionItem();
@@ -862,7 +862,7 @@ bool CTvtPlay::EnablePlugin(bool fEnable) {
     //AlwaysOnTop
     /*
       m_fHasOriginal_AlwaysOnTop   TVTest側のAlwaysOnTopを保存したか？
-      m_fOriginal_AlwaysOnTop   TVTest側のAlwaysOnTop
+      m_fOriginal_AlwaysOnTop      TVTest側のAlwaysOnTop
     */
     if (InitializePlugin()){
       if (fEnable) {
@@ -1042,7 +1042,7 @@ bool CTvtPlay::OpenWithDialog()
 // ポップアップメニュー選択でファイルを開く
 bool CTvtPlay::OpenWithPopup(const POINT &pt, UINT flags)
 {
-    if (m_popupMax <= 0) return false;
+  if (m_popupMax <= 0) return false;
 
   wstring playNow_path;
   auto playlist = m_playlist.Get();
@@ -1060,12 +1060,12 @@ bool CTvtPlay::OpenWithPopup(const POINT &pt, UINT flags)
       if (selID == 0) {// cancel, click outer area
         break;
       }
-      else if (selID == 1) {// click folder item
+      else if (selID == 1) {// select folder item
         m_SelPopupPattern = m_cyclePop.Next();
         ::DestroyMenu(hmenu);
         continue;
       }
-      else if (2 <= selID)// click file item
+      else if (2 <= selID)// select file item
       {
         playNext = m_cyclePop.GetSelectedFile(selID);
         break;
