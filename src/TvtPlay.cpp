@@ -1184,7 +1184,12 @@ bool CTvtPlay::OpenWithPlayListPopup(const POINT &pt, UINT flags)
     if (hTopMenu) {
         HMENU hmenu;
         if (m_playlist.Get().empty()) {
-            hmenu = ::GetSubMenu(hTopMenu, 1);
+            //mod off
+            //hmenu = ::GetSubMenu(hTopMenu, 1);
+            //mod
+            hmenu = ::CreatePopupMenu();
+            ::AppendMenu(hmenu, MF_STRING | MF_GRAYED, 0, L"[ Playlist ]");
+            ::AppendMenu(hmenu, MF_STRING | MF_GRAYED, 0, L"  no file");
         }
         else {
 
