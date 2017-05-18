@@ -2517,6 +2517,7 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
         pThis->m_fEventExecute = true;
         // FALL THROUGH!
     case TVTest::EVENT_STARTUPDONE:
+    {
         // 起動時の処理が終わった
         if (Event == TVTest::EVENT_STARTUPDONE) {
             if (pThis->m_fForceEnable) pThis->m_pApp->EnablePlugin(true);
@@ -2548,41 +2549,34 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
         ・多重起動禁止のTVTestから送られるコマンドラインでも再生できるようになる。
         */
         //プレイリストに追加
+        bool playefile = false;
         if (pThis->m_fForceEnable) {
           if (pThis->m_szSpecFileName[0]) {
             if (pThis->m_playlist.PushBackListOrFile_AutoPlay(pThis->m_szSpecFileName, true, true) >= 0) {
               pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
+              playefile = true;
             }
             pThis->m_szSpecFileName[0] = 0;
           }
         }
 
         //Popupフォルダを再生
-        if (pThis->m_fAutoPlay)
+        //　引数にTSファイルがあればそちらを優先する。
+        if (playefile == false && pThis->m_fAutoPlay)
         {
           pThis->m_fAutoPlay = false;
-          //プラグインを有効化してiniを読み込む
-          pThis->ForceEnablePlugin();
+          pThis->LoadSettings();// load m_szPopupPattern from ini
+          wstring recFolder;
+          TCHAR recf[MAX_PATH] = {};
+          if (pThis->m_pApp->GetSetting(L"RecordFolder", recf, _countof(recf)) > 0)
+            recFolder = wstring(recf);
+          wstring ptn0 = std::regex_replace(pThis->m_szPopupPattern, wregex(L"%RecordFolder%"), recFolder);
 
-          TCHAR Popup[MAX_PATH];
-          if (!::StrCmpNI(pThis->m_szPopupPattern, TEXT("%RecordFolder%"), 14)) {
-            if (pThis->m_pApp->GetSetting(L"RecordFolder", Popup, _countof(Popup)) <= 0) Popup[0] = 0;
-            ::PathAppend(Popup, pThis->m_szPopupPattern + 14);
-          }
-          else {
-            ::lstrcpy(Popup, pThis->m_szPopupPattern);
-          }
-          TCHAR dir[MAX_PATH];
-          ::lstrcpyn(dir, Popup, _countof(dir));
-          ::PathRemoveFileSpec(dir);
-          ::PathAddBackslash(dir);
-
-          if (pThis->m_playlist.PushBackListOrFile_AutoPlay(dir, true, true) >= 0) {
+          if (pThis->m_playlist.PushBackListOrFile_AutoPlay(ptn0.c_str(), true, true) >= 0) {
             pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
           }
         }
-
-
+        }    
         break;
     case TVTest::EVENT_STATUSITEM_DRAW:
         // ステータス項目の描画
