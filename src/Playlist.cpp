@@ -146,13 +146,12 @@ int CPlaylist::PushBackListOrFile_AutoPlay(LPCTSTR path, bool fMovePos, bool fAu
 ///
 int CPlaylist::PushBackCollectedFiles(const LPCTSTR path, const size_t ListMax)
 {
-  ClearWithoutCurrent();
-  EraseCurrent();
-
   vector<wstring> list;
   int pos = CollectFiles(list , path, ListMax);
   if (list.empty()) return -1;
 
+  ClearWithoutCurrent();
+  EraseCurrent();
   for (wstring tspath : list) {
     PLAY_INFO pi;
     ::lstrcpyn(pi.path, tspath.c_str(), _countof(pi.path));
