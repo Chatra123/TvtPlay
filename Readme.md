@@ -53,8 +53,8 @@ Button00=0,Width=36,ListPopup,OpenPopup
 
 * ポップアップ用のフォルダを追加  
 TvtPlay.ini  
-PopupPattern=D:\Rec0\\*.ts  
-PopupPattern1=E:\Rec1\\*.ts  
+PopupPattern=D:\Rec0\\\*.ts  
+PopupPattern1=E:\Rec1\\\*.ts  
 PopupPattern2=%RecordFolder%*.ts  
 を追加してください。
 
