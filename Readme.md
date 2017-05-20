@@ -1,7 +1,6 @@
 ﻿
 ## TvtPlay_mod
-
-TVTest pluginのTvtPlayの改変版
+   ・TVTest pluginのTvtPlayの改変版
 
 
 -------------------------------------------------------------------------
@@ -34,16 +33,37 @@ TVTest pluginのTvtPlayの改変版
 
 * プレイリストメニューをシンプルなメニューに変更  
 TvtPlay.ini  
-Button00=0,OpenPopup,ListPopup  
+Button00=0,Width=36,ListPopup,OpenPopup  
+を追加してください。
+
 
 ![Playlist](./TvtPlay_mod_Playlist.png)  
+
+ 
+* 同一フォルダ内のファイルをプレイリストに追加（２コまで）  
+
+
+
+-------------------------------------------------------------------------
+### 細かい変更点
+
+* 引数に -TvtpAutoPlay追加  
+起動時にPopupPatternを再生する。
+
+
+* ポップアップ用のフォルダを追加
+TvtPlay.ini  
+PopupPattern=D:\Rec0\*.ts
+PopupPattern1=E:\Rec1\*.ts
+PopupPattern2=%RecordFolder%*.ts
+を追加してください。
 
 
 * 従来よりもプラグイン、ドライバを自動で有効にする範囲を拡大し、  
   引数に.ts .tslistがあるだけで再生する。  
-
   
-* 同一フォルダ内のファイルをプレイリストに追加（２コまで）  
+
+* 引数が無いと常に無効状態で起動するのをやめた
 
 
 * ドライバ切り替え時に再生速度を１．０倍速に戻す。  
