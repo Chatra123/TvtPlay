@@ -51,11 +51,11 @@ Button00=0,Width=36,ListPopup,OpenPopup
 起動時にPopupPatternを再生する。
 
 
-* ポップアップ用のフォルダを追加
+* ポップアップ用のフォルダを追加  
 TvtPlay.ini  
-PopupPattern=D:\Rec0\*.ts
-PopupPattern1=E:\Rec1\*.ts
-PopupPattern2=%RecordFolder%*.ts
+PopupPattern=D:\Rec0\*.ts  
+PopupPattern1=E:\Rec1\*.ts  
+PopupPattern2=%RecordFolder%*.ts  
 を追加してください。
 
 
@@ -69,7 +69,8 @@ PopupPattern2=%RecordFolder%*.ts
 * ドライバ切り替え時に再生速度を１．０倍速に戻す。  
 
 
-* ファイル末尾へのシーク動作　”２秒前から再生”　→　”再生終了”
+* ファイル末尾へのシーク動作  
+　”２秒前から再生”　→　”再生終了”
 
 
 * チャプター：ogmを廃止してframeに置き換え
