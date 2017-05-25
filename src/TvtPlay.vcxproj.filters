@@ -66,6 +66,9 @@
     <ClInclude Include="CyclePopMenu.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="CyclePopMenu2.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="TvtPlay.cpp">

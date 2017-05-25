@@ -38,11 +38,11 @@ public:
   }
 
   //
-  //次
+  //次のフォルダーへ
   //
-  int Next(int newPaga = -1)
+  int NextFolder(int next = -1)
   {
-    Page = 0 <= newPaga ? newPaga : Page + 1;
+    Page = 0 <= next ? next : Page + 1;
     Page = Page < static_cast<int>(Patterns.size()) ? Page : 0;
     return Page;
   }

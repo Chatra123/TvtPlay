@@ -102,6 +102,7 @@ private:
     bool m_fAutoPlay;
     
     CyclePopMenu m_cyclePop;
+    CyclePopMenu2 m_cyclePop2;
     TCHAR m_szPopupPattern1[MAX_PATH];
     TCHAR m_szPopupPattern2[MAX_PATH];
     int m_SelPopupPattern;

@@ -28,6 +28,7 @@
 #define TVTEST_PLUGIN_VERSION TVTEST_PLUGIN_VERSION_(0,0,14)
 #include "TVTestPlugin.h"
 #include "CyclePopMenu.h"/*mod*/
+#include "CyclePopMenu2.h"/*mod*/
 #include "TvtPlay.h"
 
 #define INFO_DESCRIPTION_SUFFIX L"+)"
@@ -774,8 +775,10 @@ bool CTvtPlay::InitializePlugin()
     wstring ptn2 = std::regex_replace(m_szPopupPattern2, wregex(L"%RecordFolder%"), recFolder);
     vector<wstring> pattern{ ptn0, ptn1, ptn2 };
     m_cyclePop.Init(pattern);
-    m_cyclePop.Next(m_SelPopupPattern);
+    m_cyclePop.NextFolder(m_SelPopupPattern);
 
+    m_cyclePop2.Init(pattern);
+    m_cyclePop2.NextFolder(m_SelPopupPattern);
 
     m_fInitialized = true;
     return true;
@@ -1053,21 +1056,26 @@ bool CTvtPlay::OpenWithPopup(const POINT &pt, UINT flags)
   HMENU hmenu = nullptr;
   int selID = -1;
   while (true) {
-    m_cyclePop.CreateMenu(hmenu, playNow_path);
+    if (hmenu)
+      ::DestroyMenu(hmenu);
+    m_cyclePop2.CreateMenu(hmenu, playNow_path);
 
     if (hmenu) {
       selID = TrackPopup(hmenu, pt, flags);
-      if (selID == 0) {// cancel, click outer area
+      if (selID == 0) {// cancel menu
         break;
       }
-      else if (selID == 1) {// select folder item
-        m_SelPopupPattern = m_cyclePop.Next();
-        ::DestroyMenu(hmenu);
+      else if (selID == 1) {// next folder
+        m_SelPopupPattern = m_cyclePop2.NextFolder();
         continue;
       }
-      else if (2 <= selID)// select file item
+      else if (selID == 2) {// next folder page
+        m_cyclePop2.NextFolderPage();
+        continue;
+      }
+      else if (10 <= selID)// select file item
       {
-        playNext = m_cyclePop.GetSelectedFile(selID);
+        playNext = m_cyclePop2.GetSelectedFile(selID);
         break;
       }
     }
@@ -1080,6 +1088,8 @@ bool CTvtPlay::OpenWithPopup(const POINT &pt, UINT flags)
   else
     return false;
 }
+
+
 
 //bool CTvtPlay::OpenWithPopup(const POINT &pt, UINT flags)
 //{
