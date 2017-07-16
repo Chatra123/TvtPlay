@@ -27,9 +27,10 @@
 #define TVTEST_PLUGIN_CLASS_IMPLEMENT
 #define TVTEST_PLUGIN_VERSION TVTEST_PLUGIN_VERSION_(0,0,14)
 #include "TVTestPlugin.h"
-#include "CyclePopMenu.h"/*mod*/
 #include "CyclePopMenu2.h"/*mod*/
 #include "TvtPlay.h"
+
+
 
 #define INFO_DESCRIPTION_SUFFIX L"+)"
 
@@ -766,17 +767,14 @@ bool CTvtPlay::InitializePlugin()
     mod
     ポップアップ用のフォルダを追加
     */
-    wstring recFolder;
+    std::wstring recFolder;
     TCHAR recf[MAX_PATH] = {};
     if (m_pApp->GetSetting(L"RecordFolder", recf, _countof(recf)) > 0)
-      recFolder = wstring(recf);
-    wstring ptn0 = std::regex_replace(m_szPopupPattern, wregex(L"%RecordFolder%"), recFolder);
-    wstring ptn1 = std::regex_replace(m_szPopupPattern1, wregex(L"%RecordFolder%"), recFolder);
-    wstring ptn2 = std::regex_replace(m_szPopupPattern2, wregex(L"%RecordFolder%"), recFolder);
-    vector<wstring> pattern{ ptn0, ptn1, ptn2 };
-    m_cyclePop.Init(pattern);
-    m_cyclePop.NextFolder(m_SelPopupPattern);
-
+      recFolder = std::wstring(recf);
+    std::wstring ptn0 = std::regex_replace(m_szPopupPattern, std::wregex(L"%RecordFolder%"), recFolder);
+    std::wstring ptn1 = std::regex_replace(m_szPopupPattern1, std::wregex(L"%RecordFolder%"), recFolder);
+    std::wstring ptn2 = std::regex_replace(m_szPopupPattern2, std::wregex(L"%RecordFolder%"), recFolder);
+    std::vector<std::wstring> pattern{ ptn0, ptn1, ptn2 };
     m_cyclePop2.Init(pattern);
     m_cyclePop2.NextFolder(m_SelPopupPattern);
 
@@ -1047,12 +1045,12 @@ bool CTvtPlay::OpenWithPopup(const POINT &pt, UINT flags)
 {
   if (m_popupMax <= 0) return false;
 
-  wstring playNow_path;
+  std::wstring playNow_path;
   auto playlist = m_playlist.Get();
   if (playlist.empty() == false)
-    playNow_path = wstring(playlist[m_playlist.GetPosition()].path);
+    playNow_path = std::wstring(playlist[m_playlist.GetPosition()].path);
 
-  wstring playNext;
+  std::wstring playNext = L"";
   HMENU hmenu = nullptr;
   int selID = -1;
   while (true) {
@@ -1062,18 +1060,18 @@ bool CTvtPlay::OpenWithPopup(const POINT &pt, UINT flags)
 
     if (hmenu) {
       selID = TrackPopup(hmenu, pt, flags);
-      if (selID == 0) {// cancel menu
+      if (selID == CycPop::CycID::Cancel) {// cancel menu
         break;
       }
-      else if (selID == 1) {// next folder
+      else if (selID == CycPop::CycID::NextFolder) {// next folder
         m_SelPopupPattern = m_cyclePop2.NextFolder();
         continue;
       }
-      else if (selID == 2) {// next folder page
+      else if (selID == CycPop::CycID::NextPage) {// next folder page
         m_cyclePop2.NextFolderPage();
         continue;
       }
-      else if (10 <= selID)// select file item
+      else if (CycPop::CycID::FileOffset <= selID)// select file item
       {
         playNext = m_cyclePop2.GetSelectedFile(selID);
         break;
@@ -2581,11 +2579,11 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
         {
           pThis->m_fAutoPlay = false;
           pThis->LoadSettings();// load m_szPopupPattern from ini
-          wstring recFolder;
+          std::wstring recFolder;
           TCHAR recf[MAX_PATH] = {};
           if (pThis->m_pApp->GetSetting(L"RecordFolder", recf, _countof(recf)) > 0)
-            recFolder = wstring(recf);
-          wstring ptn0 = std::regex_replace(pThis->m_szPopupPattern, wregex(L"%RecordFolder%"), recFolder);
+            recFolder = std::wstring(recf);
+          std::wstring ptn0 = std::regex_replace(pThis->m_szPopupPattern, std::wregex(L"%RecordFolder%"), recFolder);
 
           if (pThis->m_playlist.PushBackListOrFile_AutoPlay(ptn0.c_str(), true, true) >= 0) {
             pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);

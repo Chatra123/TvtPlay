@@ -170,7 +170,6 @@
     <ClInclude Include="ChapterMap.h" />
     <ClInclude Include="CyclePopMenu2.h" />
     <ClInclude Include="DrawUtil.h" />
-    <ClInclude Include="CyclePopMenu.h" />
     <ClInclude Include="Playlist.h" />
     <ClInclude Include="ReadOnlyFile.h" />
     <ClInclude Include="ReadOnlyMpeg4File.h" />
