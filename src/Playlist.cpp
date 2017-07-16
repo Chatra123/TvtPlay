@@ -211,8 +211,12 @@ int CPlaylist::CollectFiles(vector<wstring> &list, const LPCTSTR path, const siz
   /*
   windows explorerのようにひら・カナを無視して並べかえる
   */
-  std::sort(list.begin(), list.end(), 
-    [](const wstring a, const wstring b) { return ::lstrcmpi(a.c_str(), b.c_str()) < 0; });
+  //std::sort(list.begin(), list.end(), 
+  //  [](const wstring a, const wstring b) { return ::lstrcmpi(a.c_str(), b.c_str()) < 0; });
+  //natural sort
+  std::sort(list.begin(), list.end(),
+    [](std::wstring a, std::wstring b) { return ::StrCmpLogicalW(a.c_str(), b.c_str()) < 0; });
+
 
   //index at list
   size_t path_idx = 0;
@@ -286,7 +290,8 @@ void CPlaylist::Sort(SORT_MODE mode)
         sortList.push_back(&swapList[i]);
     }
     if (mode == SORT_ASC || mode == SORT_DESC) {
-        std::sort(sortList.begin(), sortList.end(), [](const PLAY_INFO *a, const PLAY_INFO *b) { return ::lstrcmpi(a->path, b->path) < 0; });
+        //std::sort(sortList.begin(), sortList.end(), [](const PLAY_INFO *a, const PLAY_INFO *b) { return ::lstrcmpi(a->path, b->path) < 0; });
+        std::sort(sortList.begin(), sortList.end(), [](const PLAY_INFO *a, const PLAY_INFO *b) { return ::StrCmpLogicalW(a->path, b->path) < 0; });
     }
     else if (mode == SORT_SHUFFLE) {
         std::srand(::GetTickCount());

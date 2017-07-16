@@ -97,9 +97,8 @@ namespace CycPop
         }
       } while (FindNextFile(hFind, &fd));
     }
-    //sort
     std::sort(list.begin(), list.end(),
-      [](std::wstring a, std::wstring b) { return ::lstrcmpi(a.c_str(), b.c_str()) < 0; });
+      [](std::wstring a, std::wstring b) { return ::StrCmpLogicalW(a.c_str(), b.c_str()) < 0; });
 
     //Page
     //validate Page
