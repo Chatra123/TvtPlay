@@ -91,17 +91,18 @@ int CPlaylist::PushBackList(LPCTSTR fullPath)
 
 
 
-///mod
+//mod
 #include <TCHAR.H>//::_tcsicmp(...);
 #include <string>
 #include <deque>
 #include <regex>
-using namespace std;
-///
-/// AutoPlay
-///   フォルダ内のファイルをプレイリストに追加
-///   利用することが無いのでOpenDialogからは呼んでいない。 
-///
+/*
+//
+// AutoPlay
+//   フォルダ内のファイルをプレイリストに追加
+//   利用することが無いのでOpenDialogからは呼んでいない。
+//
+*/
 int CPlaylist::PushBackListOrFile_AutoPlay(LPCTSTR path, bool fMovePos, bool fAutoCorrect)
 {
   // カレントからの絶対パスに変換
@@ -112,7 +113,6 @@ int CPlaylist::PushBackListOrFile_AutoPlay(LPCTSTR path, bool fMovePos, bool fAu
   bool isPattern = _tcsstr(fullpath, TEXT("*")) != NULL;
   if (PathFileExists(fullpath) == false && isPattern == false)
     return -1;  // not found
-
 
   const size_t ListMax = 3;//-1で制限しない
   int pos = -1;
@@ -141,18 +141,18 @@ int CPlaylist::PushBackListOrFile_AutoPlay(LPCTSTR path, bool fMovePos, bool fAu
 }
 
 
-///
-///ファイルを収集しプレイリストに追加
-///
+//
+//ファイルを収集しプレイリストに追加
+//
 int CPlaylist::PushBackCollectedFiles(const LPCTSTR path, const size_t ListMax)
 {
-  vector<wstring> list;
+  std::vector<std::wstring> list;
   int pos = CollectFiles(list , path, ListMax);
   if (list.empty()) return -1;
 
   ClearWithoutCurrent();
   EraseCurrent();
-  for (wstring tspath : list) {
+  for (std::wstring tspath : list) {
     PLAY_INFO pi;
     ::lstrcpyn(pi.path, tspath.c_str(), _countof(pi.path));
     m_list.emplace_back(pi);
@@ -161,10 +161,10 @@ int CPlaylist::PushBackCollectedFiles(const LPCTSTR path, const size_t ListMax)
 }
 
 
-///
-///ファイルを収集
-///
-int CPlaylist::CollectFiles(vector<wstring> &list, const LPCTSTR path, const size_t ListMax)
+//
+//ファイルを収集
+//
+int CPlaylist::CollectFiles(std::vector<std::wstring> &list, const LPCTSTR path, const size_t ListMax)
 {
   TCHAR dir[MAX_PATH] = {};
   TCHAR name[MAX_PATH] = {};
@@ -209,11 +209,11 @@ int CPlaylist::CollectFiles(vector<wstring> &list, const LPCTSTR path, const siz
   } while (FindNextFile(hFind, &fd));
 
   /*
-  windows explorerのようにひら・カナを無視して並べかえる
+    windows explorerのようにひら・カナを無視して並べかえる
   */
   //std::sort(list.begin(), list.end(), 
   //  [](const wstring a, const wstring b) { return ::lstrcmpi(a.c_str(), b.c_str()) < 0; });
-  //natural sort
+  /* natural sort */
   std::sort(list.begin(), list.end(),
     [](std::wstring a, std::wstring b) { return ::StrCmpLogicalW(a.c_str(), b.c_str()) < 0; });
 
@@ -226,7 +226,7 @@ int CPlaylist::CollectFiles(vector<wstring> &list, const LPCTSTR path, const siz
   }
 
   //trim list
-  deque<wstring> que;
+  std::deque<std::wstring> que;
   for (size_t i = path_idx; i < list.size(); i++) {
     if (que.size() < ListMax)
       que.push_back(list[i].c_str());
@@ -244,7 +244,7 @@ int CPlaylist::CollectFiles(vector<wstring> &list, const LPCTSTR path, const siz
   }
 
   list.clear();
-  for (wstring fname : que) {
+  for (std::wstring fname : que) {
     TCHAR fullpath[MAX_PATH] = {};
     PathCombine(fullpath, dir, fname.c_str());
     list.push_back(fullpath);
