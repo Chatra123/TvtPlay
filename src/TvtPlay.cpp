@@ -27,9 +27,13 @@
 #define TVTEST_PLUGIN_CLASS_IMPLEMENT
 #define TVTEST_PLUGIN_VERSION TVTEST_PLUGIN_VERSION_(0,0,14)
 #include "TVTestPlugin.h"
-#include "CyclePopMenu2.h"/*mod*/
-#include "TvtPlay.h"
 
+//#include "CyclePopMenu2.h"/*mod*/
+//#include "CyclePopMenu4.h"
+#include "CyclePopMenu5.h"
+namespace CycPop = CycPop5;/*mod*/
+
+#include "TvtPlay.h"
 
 
 #define INFO_DESCRIPTION_SUFFIX L"+)"
@@ -434,11 +438,6 @@ void CTvtPlay::LoadSettings()
 
         GetBufferedProfileString(pBuf, TEXT("PopupPattern"), TEXT("%RecordFolder%*.ts"), m_szPopupPattern, _countof(m_szPopupPattern));
         GetBufferedProfileString(pBuf, TEXT("ChaptersFolderName"), TEXT("chapters"), m_szChaptersDirName, _countof(m_szChaptersDirName));
-
-        /* mod */
-        GetBufferedProfileString(pBuf, TEXT("PopupPattern1"), L"", m_szPopupPattern1, _countof(m_szPopupPattern1));
-        GetBufferedProfileString(pBuf, TEXT("PopupPattern2"), L"", m_szPopupPattern2, _countof(m_szPopupPattern2));
-        m_SelPopupPattern = GetBufferedProfileInt(pBuf, TEXT("SelPopupPattern"), 0);
 #ifdef EN_SWC
         GetBufferedProfileString(pBuf, TEXT("CaptionDll"), TEXT("Plugins\\TvtPlay_Caption.dll"), m_szCaptionDllPath, _countof(m_szCaptionDllPath));
         m_slowerWithCaption = GetBufferedProfileInt(pBuf, TEXT("SlowerWithCaption"), 0);
@@ -476,6 +475,21 @@ void CTvtPlay::LoadSettings()
             ::wsprintf(key, TEXT("Button%02d"), i);
             GetBufferedProfileString(pBuf, key, DEFAULT_BUTTON_LIST[j] ? DEFAULT_BUTTON_LIST[j++] : TEXT(""),
                                      m_buttonList[i], _countof(m_buttonList[0]));
+        }
+
+        /* mod */
+        GetBufferedProfileString(pBuf, TEXT("PopupPattern1"), L"", m_szPopupPattern1, _countof(m_szPopupPattern1));
+        GetBufferedProfileString(pBuf, TEXT("PopupPattern2"), L"", m_szPopupPattern2, _countof(m_szPopupPattern2));
+        m_SelPopupPattern = GetBufferedProfileInt(pBuf, TEXT("SelPopupPattern"), 0);
+        //RecentPlay
+        buf = GetPrivateProfileSectionBuffer(L"RecentPlay", m_szIniFileName);
+        pBuf = &buf.front();
+        for (int i = m_recentList.Max; 0 <= i; i--) {
+          std::wstring key = L"RecentPlay" + std::to_wstring(i);
+          TCHAR path[MAX_PATH];
+          GetBufferedProfileString(pBuf, key.c_str(), L"", path, _countof(path));
+          if (0 < std::wstring(path).length())
+            m_recentList.push_front(std::wstring(path));
         }
     }
 
@@ -620,7 +634,12 @@ void CTvtPlay::SaveFileInfoSetting(const std::list<HASH_INFO> &hashList) const
 
     /*mod*/
     WritePrivateProfileInt(SETTINGS, TEXT("SelPopupPattern"), m_SelPopupPattern, m_szIniFileName);
-
+    auto list = ((CycPop::RecentList)m_recentList).GetList();
+    for (size_t i = 0; i < m_recentList.Max; i++) {
+      std::wstring key = L"RecentPlay" + std::to_wstring(i);
+      std::wstring path = i < list.size() ? list[i] : std::wstring();
+      WritePrivateProfileString(TEXT("RecentPlay"), key.c_str(), path.c_str(), m_szIniFileName);
+    }
 }
 
 // ファイル固有情報を更新する
@@ -763,20 +782,18 @@ bool CTvtPlay::InitializePlugin()
        初期化処理で呼ぶ
     */
     SetWidthPositionItem();
-    /*
-    mod
-    ポップアップ用のフォルダを追加
-    */
+    //RecentPlay
+    //ポップアップ用のフォルダを追加
     std::wstring recFolder;
-    TCHAR recf[MAX_PATH] = {};
-    if (m_pApp->GetSetting(L"RecordFolder", recf, _countof(recf)) > 0)
-      recFolder = std::wstring(recf);
+    TCHAR ini[MAX_PATH] = {};
+    if (m_pApp->GetSetting(L"RecordFolder", ini, _countof(ini)) > 0)
+      recFolder = std::wstring(ini);
     std::wstring ptn0 = std::regex_replace(m_szPopupPattern, std::wregex(L"%RecordFolder%"), recFolder);
     std::wstring ptn1 = std::regex_replace(m_szPopupPattern1, std::wregex(L"%RecordFolder%"), recFolder);
     std::wstring ptn2 = std::regex_replace(m_szPopupPattern2, std::wregex(L"%RecordFolder%"), recFolder);
     std::vector<std::wstring> pattern{ ptn0, ptn1, ptn2 };
-    m_cyclePop2.Init(pattern);
-    m_cyclePop2.NextFolder(m_SelPopupPattern);
+    m_cyclePop.Init(pattern);
+    m_cyclePop.NextFolder(m_SelPopupPattern);
 
     m_fInitialized = true;
     return true;
@@ -1045,18 +1062,19 @@ bool CTvtPlay::OpenWithPopup(const POINT &pt, UINT flags)
 {
   if (m_popupMax <= 0) return false;
 
-  std::wstring playNow_path;
+  std::wstring path_playnow;
   auto playlist = m_playlist.Get();
   if (playlist.empty() == false)
-    playNow_path = std::wstring(playlist[m_playlist.GetPosition()].path);
+    path_playnow = std::wstring(playlist[m_playlist.GetPosition()].path);
+  m_cyclePop.UpdateFolder(path_playnow, m_recentList.GetList());
 
-  std::wstring playNext = L"";
+  std::wstring next = L"";
   HMENU hmenu = nullptr;
   int selID = -1;
   while (true) {
     if (hmenu)
       ::DestroyMenu(hmenu);
-    m_cyclePop2.CreateMenu(hmenu, playNow_path);
+    m_cyclePop.CreateMenu(hmenu, path_playnow);
 
     if (hmenu) {
       selID = TrackPopup(hmenu, pt, flags);
@@ -1064,16 +1082,15 @@ bool CTvtPlay::OpenWithPopup(const POINT &pt, UINT flags)
         break;
       }
       else if (selID == CycPop::CycID::NextFolder) {// next folder
-        m_SelPopupPattern = m_cyclePop2.NextFolder();
+        m_SelPopupPattern = m_cyclePop.NextFolder();
         continue;
       }
       else if (selID == CycPop::CycID::NextPage) {// next folder page
-        m_cyclePop2.NextFolderPage();
+        m_cyclePop.NextFolderPage();
         continue;
       }
-      else if (CycPop::CycID::FileOffset <= selID)// select file item
-      {
-        playNext = m_cyclePop2.GetSelectedFile(selID);
+      else if (CycPop::CycID::FileOffset <= selID) {// select file item
+        next = m_cyclePop.GetSelectedFile(selID);
         break;
       }
     }
@@ -1081,8 +1098,8 @@ bool CTvtPlay::OpenWithPopup(const POINT &pt, UINT flags)
   if (hmenu)
     ::DestroyMenu(hmenu);
 
-  if (playNext.empty() == false)
-    return m_playlist.PushBackListOrFile_AutoPlay(playNext.c_str(), true, true) >= 0 ? OpenCurrent() : false;
+  if (next.empty() == false)
+    return m_playlist.PushBackListOrFile_AutoPlay(next.c_str(), true, true) >= 0 ? OpenCurrent() : false;
   else
     return false;
 }
@@ -1670,6 +1687,7 @@ bool CTvtPlay::Open(LPCTSTR fileName, int offset, int stretchID)
     m_pApp->StatusItemNotify(1, TVTest::STATUS_ITEM_NOTIFY_REDRAW);
 
     //mod
+    m_recentList.push_front(std::wstring(fileName));
     SetAlwaysOnTop(true, true);
     return true;
 }

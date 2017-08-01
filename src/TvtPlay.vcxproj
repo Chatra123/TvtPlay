@@ -169,6 +169,7 @@
     <ClInclude Include="CaptionAnalyzer.h" />
     <ClInclude Include="ChapterMap.h" />
     <ClInclude Include="CyclePopMenu2.h" />
+    <ClInclude Include="CyclePopMenu5.h" />
     <ClInclude Include="DrawUtil.h" />
     <ClInclude Include="Playlist.h" />
     <ClInclude Include="ReadOnlyFile.h" />
