@@ -7,24 +7,26 @@ TvtPlay.cpp
 */
 #pragma once
 #include <Windows.h>
+#include <Shlwapi.h>
 #include <vector>
 #include <deque>
 #include <regex>
 #include <filesystem>
 
 
-namespace CycPop
+namespace CycPop2
 {
   namespace fs = std::experimental::filesystem::v1;
   using namespace std;
 
   /*
-  CyclePopMenu2のフォルダ情報
-    - ファイル収集、リストテキスト作成を行う
+  CyclePopMenuのフォルダ情報
+  - ファイル収集、メニューテキストの作成を行う
   */
   class PopFolderInfo
   {
   private:
+
     int Page = 0;//cur page index
     int PageMax = 0;
     int RowSize = 8;//１ページ中のメニュー段数
@@ -104,6 +106,7 @@ namespace CycPop
     //validate Page
     PageMax = static_cast<int>(ceil(1.0 * list.size() / RowSize));
     Page = Page < PageMax ? Page : PageMax - 1;
+    Page = 0 < Page ? Page : 0;
 
     //trim to Page
     size_t st_idx = Page * RowSize;
@@ -175,7 +178,7 @@ namespace CycPop
   //  複数フォルダに対応
   //
   */
-  class CyclePopMenu2
+  class CyclePopMenu
   {
   private:
     int Index = 0;//Folder番号
@@ -199,7 +202,7 @@ namespace CycPop
 
 
   //Init
-  void CyclePopMenu2::Init(vector<wstring> pattern) {
+  void CyclePopMenu::Init(vector<wstring> pattern) {
     const int PtnMax = 3;
     while (PtnMax < pattern.size())
       pattern.pop_back();
@@ -213,7 +216,7 @@ namespace CycPop
   }
 
   //次のFolderへ
-  int CyclePopMenu2::NextFolder(int next = -1) {
+  int CyclePopMenu::NextFolder(int next = -1) {
     if (Folder.empty() == false) {
       Index = 0 <= next ? next : Index + 1;
       Index = Index < (int)Folder.size() ? Index : 0;
@@ -222,7 +225,7 @@ namespace CycPop
   }
 
   //Folderの次のページへ
-  void CyclePopMenu2::NextFolderPage() {
+  void CyclePopMenu::NextFolderPage() {
     if (Folder.empty() == false)
       Folder[Index].Next();
   }
@@ -231,7 +234,7 @@ namespace CycPop
   //
   //ポップアップメニュー作成
   //
-  void CyclePopMenu2::CreateMenu(HMENU &hmenu, const wstring playing_path) {
+  void CyclePopMenu::CreateMenu(HMENU &hmenu, const wstring playing_path) {
     hmenu = ::CreatePopupMenu();
     if (!hmenu) return;
     if (Folder.empty()) {
@@ -275,8 +278,8 @@ namespace CycPop
       ::AppendMenu(hmenu, MF_DISABLED, CycID::Cancel, L"");
     //次ページへ
     if (fi->Has2ndPage()) {
-      wstring text = L"    ...  " + fi->GetPageCount();
-      ::AppendMenu(hmenu, MF_STRING, CycID::NextPage, text.c_str());
+      wstring pageNo = L"    ...  " + fi->GetPageCount();
+      ::AppendMenu(hmenu, MF_STRING, CycID::NextPage, pageNo.c_str());
     }
     else
       ::AppendMenu(hmenu, MF_DISABLED, CycID::Cancel, L"");
@@ -284,7 +287,7 @@ namespace CycPop
 
 
   //idからフルパス取得
-  wstring CyclePopMenu2::GetSelectedFile(size_t id) const {
+  wstring CyclePopMenu::GetSelectedFile(size_t id) const {
     id -= CycID::FileOffset;
     if (id < 0) return wstring();
     if (Folder.empty()) return wstring();
