@@ -200,6 +200,13 @@ CTvtPlay::CTvtPlay()
     , m_fUpdateHashList(false)
     , m_streamCallbackRefCount(0)
     , m_fResetPat(false)
+
+    , m_fAlwaysOnTop(false)/*mod*/
+    , m_fHasOriginal_AlwaysOnTop(false)
+    , m_fOriginal_AlwaysOnTop(false)
+    , m_fHalt_SetAlwaysOnTop(false)
+    , m_fPauseNow_byDriverChanged(false)
+    , m_fAutoPlay(false)/*mod*/
 #ifdef EN_SWC
     , m_slowerWithCaption(0)
     , m_swcShowLate(0)
@@ -213,6 +220,9 @@ CTvtPlay::CTvtPlay()
     m_szIconFileName[0] = 0;
     m_szPopupPattern[0] = 0;
     m_szChaptersDirName[0] = 0;
+
+    m_szPopupPattern1[0] = 0;/*mod*/
+    m_szPopupPattern2[0] = 0;/*mod*/
 #ifdef EN_SWC
     m_szCaptionDllPath[0] = 0;
     PAT zeroPat = {};
@@ -273,7 +283,8 @@ void CTvtPlay::AnalyzeCommandLine(LPCWSTR cmdLine, bool fIgnoreFirst)
                     }
                 }
                 /* mod */
-                else if (!::lstrcmpi(argv[i] + 1, TEXT("tvtpautoplay"))) m_fAutoPlay = true;
+                else if (!::lstrcmpi(argv[i] + 1, TEXT("tvtpautoplay"))) 
+                  m_fAutoPlay = true;
             }
         }
 
@@ -302,11 +313,6 @@ bool CTvtPlay::Initialize()
         !::PathRenameExtension(m_szIniFileName, TEXT(".ini"))) return false;
 
     //mod 
-    //  初期値
-    m_fInfoPaused = true;
-    m_fHalt_SetAlwaysOnTop = false;
-    m_fPauseNow_byDriverChanged = false;
-    m_fAutoPlay = false;
     //TVTestにドロップ受け入れ
     //プラグイン有効、無効に関係なく受け入れる
     ::DragAcceptFiles(m_pApp->GetAppWindow(), TRUE);
@@ -775,13 +781,7 @@ bool CTvtPlay::InitializePlugin()
 
     //mod off
     //::DragAcceptFiles(m_pApp->GetAppWindow(), TRUE);
-    /*
-    mod
-    DISABLEONSTARTをはずした
-     - DISABLEONSTARTをやめてTVTest::STATUS_ITEM_EVENT_VISIBILITYCHANGED:が呼ばれなくなったので
-       初期化処理で呼ぶ
-    */
-    SetWidthPositionItem();
+    /* mod */
     //RecentPlay
     //ポップアップ用のフォルダを追加
     std::wstring recFolder;
@@ -875,30 +875,28 @@ bool CTvtPlay::EnablePlugin(bool fEnable) {
         }
     }
 
-
     //mod
     //AlwaysOnTop
     /*
       m_fHasOriginal_AlwaysOnTop   TVTest側のAlwaysOnTopを保存したか？
       m_fOriginal_AlwaysOnTop      TVTest側のAlwaysOnTop
     */
-    if (InitializePlugin()){
-      if (fEnable) {
-        //最前面　TVTest側の設定を保存
-        if (m_fHasOriginal_AlwaysOnTop == false) {
-          m_fOriginal_AlwaysOnTop = m_pApp->GetAlwaysOnTop();
-          m_fHasOriginal_AlwaysOnTop = true;
-        }
-        SetAlwaysOnTop(false, true);
+    if (fEnable) {
+      //最前面　TVTest側の設定を保存
+      if (m_fHasOriginal_AlwaysOnTop == false) {
+        m_fOriginal_AlwaysOnTop = m_pApp->GetAlwaysOnTop();
+        m_fHasOriginal_AlwaysOnTop = true;
       }
-      else {
-        //最前面　TVTest側の設定に戻す
-        if (m_fHasOriginal_AlwaysOnTop) {
-          SetAlwaysOnTop(m_fOriginal_AlwaysOnTop, true);
-          m_fHasOriginal_AlwaysOnTop = false;
-        }
+      SetAlwaysOnTop(false, true);
+    }
+    else {
+      //最前面　TVTest側の設定に戻す
+      if (m_fHasOriginal_AlwaysOnTop) {
+        SetAlwaysOnTop(m_fOriginal_AlwaysOnTop, true);
+        m_fHasOriginal_AlwaysOnTop = false;
       }
     }
+
     return true;
 }
 
@@ -1998,13 +1996,12 @@ void CTvtPlay::ForceEnablePlugin()
 
   }
 }
-///
-///SetAlwaysOnTop
-///
+
+//SetAlwaysOnTop
 /*
   "全画面、非アクティブで次のファイルに切り替わるとTVTestのウィンドウが表示される"
   case WM_QUERY_CLOSE_NEXT:の  Close();  OpenCurrent();
-  でSetAlwaysOnTop();を短時間に実行しないようm_fHalt_SetAlwaysOnTopで制御する。
+  ではSetAlwaysOnTop();を短時間に実行しないようm_fHalt_SetAlwaysOnTopで制御する。
 */
 void CTvtPlay::SetAlwaysOnTop(bool fAlwaysOnTop, bool fCheckDriver)
 {
@@ -2013,17 +2010,14 @@ void CTvtPlay::SetAlwaysOnTop(bool fAlwaysOnTop, bool fCheckDriver)
 
   m_pApp->SetAlwaysOnTop(fAlwaysOnTop);
   m_fAlwaysOnTop = fAlwaysOnTop;
-
-  //まれに最前面表示に失敗するので再設定する
+  //まれに失敗するので再設定する
   ::SetTimer(m_hwndFrame, TIMER_ID_ALWAYS_ON_TOP, TIMER_ALWAYS_ON_TOP_INTERVAL, NULL);
 }
-///
-///TvtPlayで使用できるドライバーか？
-///
+
+//TvtPlayで使用できるドライバーか？
 bool CTvtPlay::IsValidTvtpDriver()
 {
   const std::wstring drivers[] = { L"BonDriver_UDP.dll", L"BonDriver_Pipe.dll" };
-
   TCHAR path[MAX_PATH];
   m_pApp->GetDriverName(path, _countof(path));
   LPCTSTR inUse = ::PathFindFileName(path);
@@ -2548,65 +2542,72 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
         pThis->m_fEventExecute = true;
         // FALL THROUGH!
     case TVTest::EVENT_STARTUPDONE:
-    {
-        // 起動時の処理が終わった
-        if (Event == TVTest::EVENT_STARTUPDONE) {
-            if (pThis->m_fForceEnable) pThis->m_pApp->EnablePlugin(true);
-            pThis->m_fEventStartupDone = true;
-        }
-
-        // mod off
-        //pThis->EnablePluginByDriverName();
-        //  if (pThis->m_pApp->IsPluginEnabled()) {
-        //    // コマンドラインにパスが指定されていれば開く
-        //    if (pThis->m_szSpecFileName[0]) {
-        //      if (pThis->m_playlist.PushBackListOrFile(pThis->m_szSpecFileName, true) >= 0) {
-        //        pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
-        //      }
-        //      pThis->m_szSpecFileName[0] = 0;
-        //    }
-
-        //    // 起動時フリーズ対策(仮)
-        //    if (pThis->m_fRaisePriority && pThis->m_pApp->GetVersion() < TVTest::MakeVersion(0, 8, 1)) {
-        //      ::SetThreadPriority(::GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
-        //    }
-        //  }
-
-
-        //mod 
-        /*
-        ・パスがあればAnalyzeCommandLine()関数内で m_fForceEnable = true になっている。
-        ・case TVTest::EVENT_EXECUTE:から FALL THROUGH!でも実行される。
-        ・多重起動禁止のTVTestから送られるコマンドラインでも再生できるようになる。
-        */
-        //プレイリストに追加
-        bool playefile = false;
-        if (pThis->m_fForceEnable) {
-          if (pThis->m_szSpecFileName[0]) {
-            if (pThis->m_playlist.PushBackListOrFile_AutoPlay(pThis->m_szSpecFileName, true, true) >= 0) {
-              pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
-              playefile = true;
-            }
-            pThis->m_szSpecFileName[0] = 0;
-          }
-        }
-
-        //Popupフォルダを再生
-        //　引数にTSファイルがあればそちらを優先する。
-        if (playefile == false && pThis->m_fAutoPlay)
         {
-          pThis->m_fAutoPlay = false;
-          pThis->LoadSettings();// load m_szPopupPattern from ini
-          std::wstring recFolder;
-          TCHAR recf[MAX_PATH] = {};
-          if (pThis->m_pApp->GetSetting(L"RecordFolder", recf, _countof(recf)) > 0)
-            recFolder = std::wstring(recf);
-          std::wstring ptn0 = std::regex_replace(pThis->m_szPopupPattern, std::wregex(L"%RecordFolder%"), recFolder);
-
-          if (pThis->m_playlist.PushBackListOrFile_AutoPlay(ptn0.c_str(), true, true) >= 0) {
-            pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
+          // 起動時の処理が終わった
+          if (Event == TVTest::EVENT_STARTUPDONE) {
+              if (pThis->m_fForceEnable) pThis->m_pApp->EnablePlugin(true);
+              pThis->m_fEventStartupDone = true;
           }
-        }
+
+          // mod off
+          //pThis->EnablePluginByDriverName();
+          //  if (pThis->m_pApp->IsPluginEnabled()) {
+          //    // コマンドラインにパスが指定されていれば開く
+          //    if (pThis->m_szSpecFileName[0]) {
+          //      if (pThis->m_playlist.PushBackListOrFile(pThis->m_szSpecFileName, true) >= 0) {
+          //        pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
+          //      }
+          //      pThis->m_szSpecFileName[0] = 0;
+          //    }
+
+          //    // 起動時フリーズ対策(仮)
+          //    if (pThis->m_fRaisePriority && pThis->m_pApp->GetVersion() < TVTest::MakeVersion(0, 8, 1)) {
+          //      ::SetThreadPriority(::GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
+          //    }
+          //  }
+
+
+          //mod 
+          /*
+           - パスがあればAnalyzeCommandLine()関数内で m_fForceEnable = true になっている。
+           - case TVTest::EVENT_EXECUTE:から FALL THROUGH!でも実行されるので多重起動禁止の
+             TVTestから送られてくるコマンドラインも処理される。
+           mod 追加
+           - 引数TvtpAutoPlay
+          */
+          //最前面解除
+          //EnablePlugin()ではfCheckDriverではじかれるので最前面を解除できない
+          pThis->SetAlwaysOnTop(false, false);
+
+          //プレイリストに追加
+          //　引数のTSファイルパス
+          if (pThis->m_fForceEnable && pThis->m_szSpecFileName[0]) {
+              if (pThis->m_playlist.PushBackListOrFile_AutoPlay(pThis->m_szSpecFileName, true, true) >= 0) {
+                pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
+              }
+              pThis->m_szSpecFileName[0] = 0;
+          }
+          // 引数TvtpAutoPlay  Popupフォルダを再生
+          else if (pThis->m_fAutoPlay) {
+            pThis->m_fAutoPlay = false;
+            pThis->LoadSettings();// get m_szPopupPattern from ini
+            std::wstring recFolder;
+            TCHAR recf[MAX_PATH] = {};
+            if (pThis->m_pApp->GetSetting(L"RecordFolder", recf, _countof(recf)) > 0)
+              recFolder = std::wstring(recf);
+            std::wstring ptn0 = std::regex_replace(pThis->m_szPopupPattern, std::wregex(L"%RecordFolder%"), recFolder);
+
+            if (pThis->m_playlist.PushBackListOrFile_AutoPlay(ptn0.c_str(), true, true) >= 0) {
+              pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
+            }
+          }
+          //非表示にしておいたステータスバー表示
+          TVTest::StatusItemSetInfo info;
+          info.Size = sizeof(info);
+          info.Mask = TVTest::STATUS_ITEM_SET_INFO_MASK_STATE;
+          info.ID = 1;
+          info.State = info.StateMask = TVTest::STATUS_ITEM_STATE_VISIBLE;
+          pThis->m_pApp->SetStatusItem(&info);
         }    
         break;
     case TVTest::EVENT_STATUSITEM_DRAW:
@@ -2640,19 +2641,19 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
             case TVTest::STATUS_ITEM_EVENT_CREATED:
                 // 項目が作成された
                 {
-              /*
-              mod
-              PLUGIN_FLAG_DISABLEONSTARTをはずした
-                - 非表示にしないようにコメントアウト      
-              */
-                    // ここでは常に非表示にしておく
-                    ////TVTest::StatusItemSetInfo info;
-                    ////info.Size = sizeof(info);
-                    ////info.Mask = TVTest::STATUS_ITEM_SET_INFO_MASK_STATE;
-                    ////info.ID = 1;
-                    ////info.StateMask = TVTest::STATUS_ITEM_STATE_VISIBLE;
-                    ////info.State = 0;
-                    ////pThis->m_pApp->SetStatusItem(&info);
+                 // ここでは常に非表示にしておく
+                  TVTest::StatusItemSetInfo info;
+                  info.Size = sizeof(info);
+                  info.Mask = TVTest::STATUS_ITEM_SET_INFO_MASK_STATE;
+                  info.ID = 1;
+                  info.StateMask = TVTest::STATUS_ITEM_STATE_VISIBLE;
+                  info.State = 0;
+                  pThis->m_pApp->SetStatusItem(&info);
+                  /*
+                  mod memo 
+                  　表示状態のままだとウィンドウサイズが前回よりもステータスバーの高さ分小さくなる。
+                    いったん非表示にし、TVTest::EVENT_STARTUPDONEの最後で表示している。
+                  */
                 }
                 return TRUE;
             case TVTest::STATUS_ITEM_EVENT_VISIBILITYCHANGED:
