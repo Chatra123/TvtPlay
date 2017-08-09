@@ -622,7 +622,7 @@ bool CTvtPlay::LoadFileInfoSetting(std::list<HASH_INFO> &hashList) const
 }
 
 // ファイル固有情報のリストを保存する
-void CTvtPlay::SaveFileInfoSetting(const std::list<HASH_INFO> &hashList) const
+void CTvtPlay::SaveFileInfoSetting(const std::list<HASH_INFO> &hashList) 
 {
     if (!m_fSettingsLoaded || m_hashListMax <= 0) return;
 
@@ -639,17 +639,20 @@ void CTvtPlay::SaveFileInfoSetting(const std::list<HASH_INFO> &hashList) const
     ::WritePrivateProfileSection(TEXT("FileInfo"), &buf.front(), m_szIniFileName);
 
     /*mod*/
-    WritePrivateProfileInt(SETTINGS, TEXT("SelPopupPattern"), m_SelPopupPattern, m_szIniFileName);
-    auto list = ((CycPop::RecentList)m_recentList).GetList();
-    for (size_t i = 0; i < m_recentList.Max; i++) {
-      std::wstring key = L"RecentPlay" + std::to_wstring(i);
-      std::wstring path = i < list.size() ? list[i] : std::wstring();
-      WritePrivateProfileString(TEXT("RecentPlay"), key.c_str(), path.c_str(), m_szIniFileName);
+    if (m_recentList.IsChanged()) {
+      m_recentList.ClearChanged();
+      auto list = m_recentList.GetList();
+      for (size_t i = 0; i < m_recentList.Max; i++) {
+        std::wstring key = L"RecentPlay" + std::to_wstring(i);
+        std::wstring path = i < list.size() ? list[i] : std::wstring();
+        WritePrivateProfileString(TEXT("RecentPlay"), key.c_str(), path.c_str(), m_szIniFileName);
+      }
+      WritePrivateProfileInt(SETTINGS, TEXT("SelPopupPattern"), m_SelPopupPattern, m_szIniFileName);
     }
 }
 
 // ファイル固有情報を更新する
-void CTvtPlay::UpdateFileInfoSetting(const HASH_INFO &hashInfo) const
+void CTvtPlay::UpdateFileInfoSetting(const HASH_INFO &hashInfo) 
 {
     std::list<HASH_INFO> hashList;
     if (LoadFileInfoSetting(hashList)) {

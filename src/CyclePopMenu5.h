@@ -50,7 +50,7 @@ namespace CycPop5
     bool IsEmpty() const { return  PageMax == 0; }
     bool Has2ndPage() const { return 2 <= PageMax; }
     wstring GetPageNo() const { return to_wstring(PageNo + 1) + L"/" + to_wstring(PageMax); }
-    wstring GetTitle() const { return Title; }  
+    wstring GetTitle() const { return Title; }
   };
   //次のページへ
   void FolderInfoBase::NextPage() {
@@ -160,7 +160,7 @@ namespace CycPop5
   class FolderInfo_CurrentPlay : public FolderInfo
   {
   private:
-    const wstring Title_head = L"Current Play:  ";
+    const wstring Title_head = L"Current :  ";
   public:
     FolderInfo_CurrentPlay(const int row) : FolderInfo(row) { }
     bool Init() override;
@@ -220,19 +220,21 @@ namespace CycPop5
 
   /*
   「最近使用したファイル」の保持だけ
-    パスの重複はなし
-    size()を制限
   */
   class RecentList
   {
   private:
+    //  新しい  front <-List[0] - - - -> back  古い
     deque<wstring> List;
+    bool isChanged = false;
   public:
     const size_t Max = 8;
     void push_front(const wstring path);
     deque<wstring> GetList() { return List; }
+    bool IsChanged() { return isChanged; }
+    void ClearChanged() { isChanged = false; }
   };
-  //push_front
+  //ファイル追加
   //重複、size()を制限
   void RecentList::push_front(const wstring new_file) {
     if (fs::exists(new_file) == false)
@@ -244,14 +246,15 @@ namespace CycPop5
 
     List.push_front(new_file);
     while (Max < List.size())
-      List.pop_front();
+      List.pop_back();
+    isChanged = true;
   }
 
 
 
 
   enum CycID {
-    Cancel = 0,    //cancel menu
+    Cancel = 0,     //cancel menu
     NextFolder = 1, //next folder
     NextPage = 2,   //next folder page
     FileOffset = 10,//select file      10+

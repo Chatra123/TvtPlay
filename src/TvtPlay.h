@@ -53,8 +53,8 @@ private:
     void LoadSettings();
     void SaveSettings(bool fWriteDefault = false) const;
     bool LoadFileInfoSetting(std::list<HASH_INFO> &hashList) const;
-    void SaveFileInfoSetting(const std::list<HASH_INFO> &hashList) const;
-    void UpdateFileInfoSetting(const HASH_INFO &hashInfo) const;
+    void SaveFileInfoSetting(const std::list<HASH_INFO> &hashList);
+    void UpdateFileInfoSetting(const HASH_INFO &hashInfo);
     bool InitializePlugin();
     int GetCaptionPid();
     bool EnablePlugin(bool fEnable);
