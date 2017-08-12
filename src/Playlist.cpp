@@ -166,6 +166,11 @@ int CPlaylist::PushBackCollectedFiles(const LPCTSTR path, const size_t ListMax)
 //
 int CPlaylist::CollectFiles(std::vector<std::wstring> &list, const LPCTSTR path, const size_t ListMax)
 {
+  /*
+  file path 
+  directory path   -->  pattern
+  pattern 
+  */
   TCHAR dir[MAX_PATH] = {};
   TCHAR name[MAX_PATH] = {};
   TCHAR pattern[MAX_PATH] = {};
@@ -199,7 +204,7 @@ int CPlaylist::CollectFiles(std::vector<std::wstring> &list, const LPCTSTR path,
   WIN32_FIND_DATA fd;
   hFind = FindFirstFile(pattern, &fd);
   if (hFind == INVALID_HANDLE_VALUE)
-    return -1;  // 失敗
+    return -1;  // fail
   list.clear();
   do {
     if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
@@ -224,7 +229,6 @@ int CPlaylist::CollectFiles(std::vector<std::wstring> &list, const LPCTSTR path,
     if (::_tcsicmp(list[i].c_str(), name) == 0)
       path_idx = i;
   }
-
   //trim list
   std::deque<std::wstring> que;
   for (size_t i = path_idx; i < list.size(); i++) {
@@ -235,14 +239,12 @@ int CPlaylist::CollectFiles(std::vector<std::wstring> &list, const LPCTSTR path,
     if (que.size() < ListMax)
       que.push_front(list[i].c_str());
   }
-
   //index at que
   path_idx = 0;
   for (size_t i = 0; i < que.size(); i++) {
     if (::_tcsicmp(que[i].c_str(), name) == 0)
       path_idx = i;
   }
-
   list.clear();
   for (std::wstring fname : que) {
     TCHAR fullpath[MAX_PATH] = {};
