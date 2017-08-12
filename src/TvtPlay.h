@@ -92,14 +92,13 @@ private:
     //mod
     void ForceEnablePlugin();
     bool IsValidTvtpDriver();
-    void SetAlwaysOnTop(bool fAlwaysOnTop, bool fCheckDriver);
+    void SetAlwaysOnTop(bool fAlwaysOnTop, bool runTimer = true);
     bool m_fAlwaysOnTop;
-    bool m_fHasOriginal_AlwaysOnTop;
-    bool m_fOriginal_AlwaysOnTop;
-    bool m_fHalt_SetAlwaysOnTop;
-    bool m_fPauseNow_byDriverChanged;
+    bool m_fHasBackup_AlwaysOnTop;
+    bool m_fBackup_AlwaysOnTop;
+    int m_HaltCount_SetAlwaysOnTop;
+    bool m_fIsPause_byDriverChanged;
     bool m_fAutoPlay;
-
     CycPop::CyclePopMenu m_cyclePop;
     CycPop::RecentList m_recentList;
     TCHAR m_szPopupPattern1[MAX_PATH];
