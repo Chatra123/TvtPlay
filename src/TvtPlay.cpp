@@ -2604,10 +2604,14 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
             }
           }
           pThis->m_HaltCount_SetAlwaysOnTop--;
-          if(isOpen == false || pThis->m_playlist.Get().size() == 0)
-            pThis->SetAlwaysOnTop(false);
-          else
+          if (isOpen)
             pThis->SetAlwaysOnTop(true);
+          else {
+            if (pThis->IsPaused())
+              pThis->SetAlwaysOnTop(false);
+            else
+              pThis->SetAlwaysOnTop(true);
+          }
           //非表示にしておいたステータスバー表示
           TVTest::StatusItemSetInfo info;
           info.Size = sizeof(info);
