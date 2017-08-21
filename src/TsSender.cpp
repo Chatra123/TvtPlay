@@ -953,19 +953,19 @@ bool CTsSender::Seek(__int64 distanceToMove, IReadOnlyFile::MOVE_METHOD moveMeth
     m_fEnPcr = false;
 
     //mod
-    int set_prc = ReadToPcr(120000, false, true);
     // EOFならPCRに関係なく終了させる。
-    // set_prc=0: 終端に達した, set_prc=1: PCRが現れる前に処理パケット数がlimitに達した, set_prc=2: 正常に処理した
-    if (set_prc == 0 && m_fShareWrite == false) {
+    // ReadToPcr() = 0: 終端に達した, = 1: PCRが現れる前に処理パケット数がlimitに達した, = 2: 正常に処理した
+    bool fReadToPcr = ReadToPcr(120000, false, true) == 2;
+    bool fReadToEof = !fReadToPcr;
+    if (fReadToEof && m_fShareWrite == false) {
       if (m_file->SetPointer(0, IReadOnlyFile::MOVE_METHOD_END)) {
         m_curr = m_head = m_tail = NULL;
         m_fEnPcr = false;
         return true;
       }
     }
-
+    if (fReadToEof) {
     //if (ReadToPcr(120000, false, true) != 2) {
-    if (set_prc != 2) {
         // なるべく呼び出し前の状態に回復させるが、完全とは限らない
         if (m_file->SetPointer(lastPos, IReadOnlyFile::MOVE_METHOD_BEGIN) >= 0) {
             m_curr = m_head = m_tail = NULL;
