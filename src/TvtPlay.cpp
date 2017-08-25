@@ -2486,8 +2486,10 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
             pThis->m_tsSender.SetSpeed(100, 100);
             //再生中なら一時停止
             if (!pThis->IsPaused()) {
+              pThis->m_HaltCount_SetAlwaysOnTop++;
               pThis->Pause(true);
               pThis->m_fIsPause_byDriverChanged = true;
+              pThis->m_HaltCount_SetAlwaysOnTop--;
             }
             //最前面　TVTest側の設定に戻す
             if (pThis->m_pApp->IsPluginEnabled() 
@@ -2507,8 +2509,10 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
             //再生再開
             if (pThis->m_pApp->IsPluginEnabled() 
               && pThis->m_fIsPause_byDriverChanged) {
+                pThis->m_HaltCount_SetAlwaysOnTop--;
                 pThis->Pause(false);
                 pThis->m_fIsPause_byDriverChanged = false;
+                pThis->m_HaltCount_SetAlwaysOnTop++;
                 pThis->SetAlwaysOnTop(true, false);
               }
           }
