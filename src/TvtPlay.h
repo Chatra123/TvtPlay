@@ -92,7 +92,7 @@ private:
     //mod
     void ForceEnablePlugin();
     bool IsValidTvtpDriver();
-    void SetAlwaysOnTop(bool fAlwaysOnTop, bool runTimer = true);
+    void SetAlwaysOnTop(bool fAlwaysOnTop, bool fRunTimer = true, bool fCheckDriver = true);
     bool m_fAlwaysOnTop;
     bool m_fHasBackup_AlwaysOnTop;
     bool m_fBackup_AlwaysOnTop;

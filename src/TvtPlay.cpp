@@ -2007,17 +2007,17 @@ void CTvtPlay::ForceEnablePlugin()
       - WM_QUERY_CLOSE_NEXTの  Close()       , OpenCurrent()
       でのSetAlwaysOnTop()の連続で無効にしている。
 */
-void CTvtPlay::SetAlwaysOnTop(bool fAlwaysOnTop, bool runTimer)
+void CTvtPlay::SetAlwaysOnTop(bool fAlwaysOnTop, bool fRunTimer, bool fCheckDriver)
 {
   if (0 < m_HaltCount_SetAlwaysOnTop) return;
-  if (IsValidTvtpDriver() == false) return;
+  if (fCheckDriver && IsValidTvtpDriver() == false) return;
 
   bool cur = m_pApp->GetAlwaysOnTop();
   if (cur != fAlwaysOnTop) {
     m_pApp->SetAlwaysOnTop(fAlwaysOnTop);
     m_fAlwaysOnTop = fAlwaysOnTop;
     //まれに失敗するので再設定する
-    if(runTimer)
+    if(fRunTimer)
       ::SetTimer(m_hwndFrame, TIMER_ID_ALWAYS_ON_TOP, TIMER_ALWAYS_ON_TOP_INTERVAL, NULL);
   }
 }
@@ -2494,7 +2494,7 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
             //最前面　TVTest側の設定に戻す
             if (pThis->m_pApp->IsPluginEnabled() 
               && pThis->m_fHasBackup_AlwaysOnTop) {
-                pThis->SetAlwaysOnTop(pThis->m_fBackup_AlwaysOnTop);
+                pThis->SetAlwaysOnTop(pThis->m_fBackup_AlwaysOnTop, true ,false);
                 pThis->m_fHasBackup_AlwaysOnTop = false;
             }
           }
@@ -2610,6 +2610,8 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
           pThis->m_HaltCount_SetAlwaysOnTop--;
           if (isOpen)
             pThis->SetAlwaysOnTop(true);
+          else if (pThis->m_playlist.Get().size() == 0)
+            pThis->SetAlwaysOnTop(false);
           else {
             if (pThis->IsPaused())
               pThis->SetAlwaysOnTop(false);
