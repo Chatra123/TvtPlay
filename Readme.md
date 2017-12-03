@@ -81,16 +81,14 @@ PopupPattern2=%RecordFolder%*.ts
 ### fork  
 
 xtne6f/TvtPlay  
-work-plus branch r121  
 <https://github.com/xtne6f/TvtPlay>  
 
 
 ### test environment  
 
-TVTest 0.9.0dev  
+TVTest 0.9.0  
 DBCTRADO/TVTest  
-develop branch r643  
 <https://github.com/DBCTRADO/TVTest>  
-TVTest 0.8.1では動きません。
+
 
 
