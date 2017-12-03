@@ -2850,6 +2850,8 @@ LRESULT CALLBACK CTvtPlay::FrameWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
         pThis->m_HaltCount_SetAlwaysOnTop--;
         if (pThis->m_playlist.Next(pThis->IsAllRepeat())) 
           pThis->OpenCurrent();
+        else
+          pThis->SetAlwaysOnTop(false, true);
         return 0;
     case WM_QUERY_SEEK_BGN:
         pThis->SeekToBegin();
