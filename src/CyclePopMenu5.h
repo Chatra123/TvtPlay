@@ -31,18 +31,19 @@ namespace CycPop5
   protected:
     int PageNo = 0;
     int PageMax = 0;
-    size_t RowSize = 4;//１ページ内のメニュー段数
+
+    size_t RowSizeMax = 8;//１ページ内のメニュー段数
     wstring Title;
     fs::path Folder;//最後の￥は無し
     vector<vector<fs::path>> FileList;
   public:
-    FolderInfoBase(const int row) { RowSize = row; }
+    FolderInfoBase(int rowMax) { RowSizeMax = rowMax; }
     virtual ~FolderInfoBase() {}
     virtual bool Init() { return true; };
     virtual bool Init(const wstring folder) { return true; };
     virtual void Update() {};
     void UpdateFileList(vector<wstring> list);
-    virtual vector<fs::path> GetPageFile();
+    vector<fs::path> GetPageFile() const { return FileList.empty() ? vector<fs::path>() : FileList[PageNo]; };
     virtual vector<wstring> GetEmptyPage() { return vector<wstring>(); };
     void NextPage();
 
@@ -51,6 +52,11 @@ namespace CycPop5
     bool Has2ndPage() const { return 2 <= PageMax; }
     wstring GetPageNo() const { return to_wstring(PageNo + 1) + L"/" + to_wstring(PageMax); }
     wstring GetTitle() const { return Title; }
+    size_t GetEmptyRowSize() const {
+      int row = FileList.empty() ? 0 : FileList[PageNo].size();
+      int empty = RowSizeMax - row;
+      return 0 <= empty ? empty : 0;
+    }
   };
   //次のページへ
   void FolderInfoBase::NextPage() {
@@ -59,7 +65,7 @@ namespace CycPop5
     PageNo++;
     PageNo = PageNo < PageMax ? PageNo : 0;
   }
-  //listをpageに分割
+  //ファイル一覧をページごとにに整理
   //  vector<wstring> list  -->  vector<vector<wstring>> FileList
   void FolderInfoBase::UpdateFileList(vector<wstring> list) {
     FileList.clear();
@@ -67,7 +73,7 @@ namespace CycPop5
     vector<fs::path> page;
     for (wstring one : list) {
       page.push_back(fs::path(one));
-      if (RowSize <= page.size()) {
+      if (RowSizeMax <= page.size()) {
         FileList.push_back(page);
         page.clear();
       }
@@ -75,17 +81,10 @@ namespace CycPop5
     if (page.empty() == false)
       FileList.push_back(page);
     //page no
-    PageMax = static_cast<int>(ceil(1.0 * list.size() / RowSize));
+    PageMax = static_cast<int>(ceil(1.0 * list.size() / RowSizeMax));
     PageNo = PageNo < PageMax ? PageNo : PageMax - 1;
     PageNo = 0 < PageNo ? PageNo : 0;
   }
-  //１ページのファイル一覧を取得
-  vector<fs::path> FolderInfoBase::GetPageFile() {
-    if (FileList.empty())
-      return vector<fs::path>();
-    return FileList[PageNo];
-  }
-
 
 
   /*
@@ -97,15 +96,14 @@ namespace CycPop5
   protected:
     wstring Pattern;
   public:
-    FolderInfo(const int row) : FolderInfoBase(row) { }
+    FolderInfo(int rowMax) : FolderInfoBase(rowMax) { };
     bool Init(const wstring pattern) override;
     void Update() override;
     vector<wstring> GetEmptyPage() override;
   };
   //Init
   bool FolderInfo::Init(const wstring pattern) {
-    // パターン形式ではなくフォルダ名ならスキップ
-    // *.tsは付加しない。
+    // パターン形式のみ、フォルダ名だけではダメ
     if (fs::is_directory(pattern)) return false;
     fs::path folder(pattern);
     folder.assign(folder.parent_path());
@@ -162,7 +160,7 @@ namespace CycPop5
   private:
     const wstring Title_head = L"Current :  ";
   public:
-    FolderInfo_CurrentPlay(const int row) : FolderInfo(row) { }
+    FolderInfo_CurrentPlay(int rowMax) : FolderInfo(rowMax) { }
     bool Init() override;
     void SetNewFolder(const wstring folder);
   };
@@ -173,7 +171,6 @@ namespace CycPop5
   }
   //SetNewFolder
   void FolderInfo_CurrentPlay::SetNewFolder(const wstring path) {
-    //is folder path ?
     fs::path folder(path);
     if (fs::is_directory(folder) == false)
       folder.assign(folder.parent_path());
@@ -198,7 +195,7 @@ namespace CycPop5
   private:
     deque<wstring> Recent;
   public:
-    FolderInfo_RecentPlay(const int row) : FolderInfo(row) { }
+    FolderInfo_RecentPlay(int rowMax) : FolderInfo(rowMax) { }
     bool Init() override;
     void Update() override;
     void SetNewList(const deque<wstring> list) { Recent = list; }
@@ -224,7 +221,7 @@ namespace CycPop5
   class RecentList
   {
   private:
-    //  新しい  front <-List[0] - - - -> back  古い
+    //  新しい  front  List[0] ... List[last] back  古い
     deque<wstring> List;
     bool isChanged = false;
   public:
@@ -267,8 +264,11 @@ namespace CycPop5
   class CyclePopMenu
   {
   private:
+
     int Index = 0;//Folder[Index]
     vector<shared_ptr<FolderInfo>> Folder;
+
+    bool EnableCurrent, EnableRecent;
     shared_ptr<FolderInfo_RecentPlay> Folder_RecentPlay;
     shared_ptr<FolderInfo_CurrentPlay> Folder_CurPlay;
     vector<fs::path> FileList;//ページのファイルパス一覧を一時保存
@@ -280,7 +280,7 @@ namespace CycPop5
     */
     const size_t MenuRowMax = 8;
   public:
-    void Init(vector<wstring> pattern);
+    void Init(vector<wstring> pattern, bool enableCurrent, bool enableRecent);
     int NextFolder(int next);
     void NextFolderPage();
     void UpdateFolder(const wstring playing_path, const deque<wstring> recent_play);
@@ -290,7 +290,7 @@ namespace CycPop5
 
 
   //Init
-  void CyclePopMenu::Init(vector<wstring> pattern) {
+  void CyclePopMenu::Init(vector<wstring> pattern, bool enableCurrent, bool enableRecent) {
     const int PtnMax = 3;
     while (PtnMax < pattern.size())
       pattern.pop_back();
@@ -301,12 +301,19 @@ namespace CycPop5
         Folder.emplace_back(fi);
       }
     }
-    Folder_CurPlay = make_shared<FolderInfo_CurrentPlay>(MenuRowMax);
-    Folder_CurPlay->Init();
-    Folder_RecentPlay = make_shared<FolderInfo_RecentPlay>(MenuRowMax);
-    Folder_RecentPlay->Init();
-    Folder.emplace_back(Folder_CurPlay);
-    Folder.emplace_back(Folder_RecentPlay);
+
+    EnableCurrent = enableCurrent;
+    EnableRecent = enableRecent;
+    if (EnableCurrent) {
+      Folder_CurPlay = make_shared<FolderInfo_CurrentPlay>(MenuRowMax);
+      Folder_CurPlay->Init();
+      Folder.emplace_back(Folder_CurPlay);
+    }
+    if (EnableRecent) {
+      Folder_RecentPlay = make_shared<FolderInfo_RecentPlay>(MenuRowMax);
+      Folder_RecentPlay->Init();
+      Folder.emplace_back(Folder_RecentPlay);
+    }
   }
   //次のFolderへ
   int CyclePopMenu::NextFolder(int next = -1) {
@@ -330,21 +337,24 @@ namespace CycPop5
   //フォルダ情報の更新
   void CyclePopMenu::UpdateFolder(const wstring playing_path, const deque<wstring> recent_list) {
     //CurrentPlay
-    fs::path folder(playing_path);
-    if (fs::is_directory(folder) == false) {
-      folder.assign(folder.parent_path());
-    }
-    Folder_CurPlay->SetNewFolder(folder);
-    //fiと同じフォルダなら無効に
-    Folder_CurPlay->Enable = true;
-    for (auto fi : Folder) {
-      if (fi == Folder_CurPlay)
-        continue;
-      if (Folder_CurPlay->GetFolder() == fi->GetFolder())
-        Folder_CurPlay->Enable = false;
+    if (EnableCurrent) {
+      fs::path folder(playing_path);
+      if (fs::is_directory(folder) == false) {
+        folder.assign(folder.parent_path());
+      }
+      Folder_CurPlay->SetNewFolder(folder);
+      //PopupFolderと同じなら無効に
+      Folder_CurPlay->Enable = true;
+      for (auto fi : Folder) {
+        if (fi == Folder_CurPlay)
+          continue;
+        if (Folder_CurPlay->GetFolder() == fi->GetFolder())
+          Folder_CurPlay->Enable = false;
+      }
     }
     //RecentPlay
-    Folder_RecentPlay->SetNewList(recent_list);
+    if (EnableRecent)
+      Folder_RecentPlay->SetNewList(recent_list);
     //FolderInfo
     for (auto fi : Folder)
       fi->Update();
@@ -360,7 +370,7 @@ namespace CycPop5
       return;
     }
 
-    auto fi = Folder[Index];
+    auto fi = Folder[Index];//folder info
     int rows = 0;
     //先頭のフォルダ名
     wstring title = wstring(L"    [ ") + fi->GetTitle() + L" ]";
@@ -397,8 +407,8 @@ namespace CycPop5
       }
     }
     //空行で埋める
-    size_t space = MenuRowMax - rows;
-    for (size_t i = 0; i < space; i++)
+    size_t empty = MenuRowMax - rows;
+    for (size_t i = 0; i < fi->GetEmptyRowSize(); i++)
       ::AppendMenu(hmenu, MF_DISABLED, CycID::Cancel, L"");
     //次ページへ
     if (fi->Has2ndPage()) {

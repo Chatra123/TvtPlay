@@ -485,17 +485,27 @@ void CTvtPlay::LoadSettings()
         /* mod */
         GetBufferedProfileString(pBuf, TEXT("PopupPattern1"), L"", m_szPopupPattern1, _countof(m_szPopupPattern1));
         GetBufferedProfileString(pBuf, TEXT("PopupPattern2"), L"", m_szPopupPattern2, _countof(m_szPopupPattern2));
-        m_SelPopupPattern = GetBufferedProfileInt(pBuf, TEXT("SelPopupPattern"), 0);
+        m_CycPop_LastSelect = GetBufferedProfileInt(pBuf, TEXT("CycPop_SelectPopupPattern"), 0);
+        m_fCycPop_EnableCurrent = GetBufferedProfileInt(pBuf, TEXT("CycPop_EnableCurrent"), 1) != 0;
+        m_fCycPop_EnableRecent = GetBufferedProfileInt(pBuf, TEXT("CycPop_EnableRecent"), 1) != 0;
         //RecentPlay
-        buf = GetPrivateProfileSectionBuffer(L"RecentPlay", m_szIniFileName);
-        pBuf = &buf.front();
-        for (int i = m_recentList.Max; 0 <= i; i--) {
-          std::wstring key = L"RecentPlay" + std::to_wstring(i);
-          TCHAR path[MAX_PATH];
-          GetBufferedProfileString(pBuf, key.c_str(), L"", path, _countof(path));
-          if (0 < std::wstring(path).length())
-            m_recentList.push_front(std::wstring(path));
+        if (m_fCycPop_EnableRecent) {
+          buf = GetPrivateProfileSectionBuffer(L"RecentPlay", m_szIniFileName);
+          pBuf = &buf.front();
+          for (int i = m_recentList.Max; 0 <= i; i--) {
+            std::wstring key = L"RecentPlay" + std::to_wstring(i);
+            TCHAR path[MAX_PATH];
+            GetBufferedProfileString(pBuf, key.c_str(), L"", path, _countof(path));
+            if (0 < std::wstring(path).length())
+              m_recentList.push_front(std::wstring(path));
+          }
         }
+        else
+        {
+
+
+        }
+
     }
 
     m_fSettingsLoaded = true;
@@ -646,7 +656,7 @@ void CTvtPlay::SaveFileInfoSetting(const std::list<HASH_INFO> &hashList)
         std::wstring path = i < list.size() ? list[i] : std::wstring();
         WritePrivateProfileString(TEXT("RecentPlay"), key.c_str(), path.c_str(), m_szIniFileName);
       }
-      WritePrivateProfileInt(SETTINGS, TEXT("SelPopupPattern"), m_SelPopupPattern, m_szIniFileName);
+      WritePrivateProfileInt(SETTINGS, TEXT("CycPop_SelectPopupPattern"), m_CycPop_LastSelect, m_szIniFileName);
     }
 }
 
@@ -794,9 +804,8 @@ bool CTvtPlay::InitializePlugin()
     std::wstring ptn1 = std::regex_replace(m_szPopupPattern1, std::wregex(L"%RecordFolder%"), recFolder);
     std::wstring ptn2 = std::regex_replace(m_szPopupPattern2, std::wregex(L"%RecordFolder%"), recFolder);
     std::vector<std::wstring> pattern{ ptn0, ptn1, ptn2 };
-    m_cyclePop.Init(pattern);
-    m_cyclePop.NextFolder(m_SelPopupPattern);
-
+    m_cyclePop.Init(pattern, m_fCycPop_EnableCurrent, m_fCycPop_EnableRecent);
+    m_cyclePop.NextFolder(m_CycPop_LastSelect);
     m_fInitialized = true;
    return true;
 }
@@ -1082,14 +1091,14 @@ bool CTvtPlay::OpenWithPopup(const POINT &pt, UINT flags)
         break;
       }
       else if (selID == CycPop::CycID::NextFolder) {// next folder
-        m_SelPopupPattern = m_cyclePop.NextFolder();
+        m_CycPop_LastSelect = m_cyclePop.NextFolder();
         continue;
       }
       else if (selID == CycPop::CycID::NextPage) {// next folder page
         m_cyclePop.NextFolderPage();
         continue;
       }
-      else if (CycPop::CycID::FileOffset <= selID) {// select file item
+      else if (CycPop::CycID::FileOffset <= selID) {// select playfile
         next = m_cyclePop.GetSelectedFile(selID);
         break;
       }
@@ -1209,8 +1218,7 @@ bool CTvtPlay::OpenWithPlayListPopup(const POINT &pt, UINT flags)
     if (hTopMenu) {
         HMENU hmenu;
         if (m_playlist.Get().empty()) {
-            //mod off
-            //hmenu = ::GetSubMenu(hTopMenu, 1);
+
             //mod
             hmenu = ::CreatePopupMenu();
             ::AppendMenu(hmenu, MF_STRING | MF_GRAYED, 0, L"[ Playlist ]");
@@ -1218,8 +1226,6 @@ bool CTvtPlay::OpenWithPlayListPopup(const POINT &pt, UINT flags)
         }
         else {
 
-            //mod off
-            //hmenu = ::GetSubMenu(hTopMenu, 0);
             //mod
             //プレイリスト操作のコマンドはメニューから除去
             hmenu = ::CreatePopupMenu();
@@ -1242,8 +1248,6 @@ bool CTvtPlay::OpenWithPlayListPopup(const POINT &pt, UINT flags)
                 mi.fType = MFT_STRING | MFT_RADIOCHECK;
                 mi.dwTypeData = str;
 
-                //mod off
-                //::InsertMenuItem(hmenu, cmdID - 1, TRUE, &mi);
                 //mod 
                 ::InsertMenuItem(hmenu, cmdID, TRUE, &mi);
             }
@@ -1794,13 +1798,6 @@ void CTvtPlay::Pause(bool fPause)
     //mod
     SetAlwaysOnTop(!fPause, true);
 }
-
-//mod off
-//void CTvtPlay::SeekToBegin()
-//{
-//    WaitAndPostToSender(WM_TS_SEEK_BGN, 0, 0, m_resetMode != 0);
-//    BeginWatchingNextChapter(true);
-//}
 
 
 void CTvtPlay::SeekToBegin()
@@ -2668,7 +2665,7 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
                   pThis->m_pApp->SetStatusItem(&info);
                   /*
                   mod memo 
-                  　表示状態のままだとウィンドウサイズが前回よりもステータスバーの高さ分小さくなる。
+                  　表示状態のままだと前回のウィンドウサイズよりもステータスバーの高さ分小さくなる。
                     いったん非表示にし、TVTest::EVENT_STARTUPDONEの最後で表示している。
                   */
                 }

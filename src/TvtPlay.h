@@ -103,8 +103,9 @@ private:
     CycPop::RecentList m_recentList;
     TCHAR m_szPopupPattern1[MAX_PATH];
     TCHAR m_szPopupPattern2[MAX_PATH];
-    int m_SelPopupPattern;
-
+    int m_CycPop_LastSelect;
+    bool m_fCycPop_EnableCurrent;
+    bool m_fCycPop_EnableRecent;
 
 
     // 初期パラメータ
