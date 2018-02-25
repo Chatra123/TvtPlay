@@ -22,7 +22,7 @@ namespace CycPop5
   using namespace std;
 
   /*
-    CyclePopMenuのフォルダ情報 Base class
+  フォルダ情報　基本クラス
     ページ操作、プロパティの実装
   */
   class FolderInfoBase {
@@ -31,19 +31,18 @@ namespace CycPop5
   protected:
     int PageNo = 0;
     int PageMax = 0;
-
     size_t RowSizeMax = 8;//１ページ内のメニュー段数
     wstring Title;
     fs::path Folder;//最後の￥は無し
-    vector<vector<fs::path>> FileList;
+    vector<vector<fs::path>> PageList;
   public:
     FolderInfoBase(int rowMax) { RowSizeMax = rowMax; }
     virtual ~FolderInfoBase() {}
     virtual bool Init() { return true; };
     virtual bool Init(const wstring folder) { return true; };
     virtual void Update() {};
-    void UpdateFileList(vector<wstring> list);
-    vector<fs::path> GetPageFile() const { return FileList.empty() ? vector<fs::path>() : FileList[PageNo]; };
+    void UpdatePageList(vector<wstring> list);
+    vector<fs::path> GetPageFile() const { return PageList.empty() ? vector<fs::path>() : PageList[PageNo]; };
     virtual vector<wstring> GetEmptyPage() { return vector<wstring>(); };
     void NextPage();
 
@@ -52,11 +51,6 @@ namespace CycPop5
     bool Has2ndPage() const { return 2 <= PageMax; }
     wstring GetPageNo() const { return to_wstring(PageNo + 1) + L"/" + to_wstring(PageMax); }
     wstring GetTitle() const { return Title; }
-    size_t GetEmptyRowSize() const {
-      int row = FileList.empty() ? 0 : FileList[PageNo].size();
-      int empty = RowSizeMax - row;
-      return 0 <= empty ? empty : 0;
-    }
   };
   //次のページへ
   void FolderInfoBase::NextPage() {
@@ -65,21 +59,21 @@ namespace CycPop5
     PageNo++;
     PageNo = PageNo < PageMax ? PageNo : 0;
   }
-  //ファイル一覧をページごとにに整理
-  //  vector<wstring> list  -->  vector<vector<wstring>> FileList
-  void FolderInfoBase::UpdateFileList(vector<wstring> list) {
-    FileList.clear();
+  //ファイルリストをページごとに整理
+  //  vector<wstring> list  -->  vector<vector<wstring>> PageList
+  void FolderInfoBase::UpdatePageList(vector<wstring> list) {
+    PageList.clear();
     //page
     vector<fs::path> page;
     for (wstring one : list) {
       page.push_back(fs::path(one));
       if (RowSizeMax <= page.size()) {
-        FileList.push_back(page);
+        PageList.push_back(page);
         page.clear();
       }
     }
     if (page.empty() == false)
-      FileList.push_back(page);
+      PageList.push_back(page);
     //page no
     PageMax = static_cast<int>(ceil(1.0 * list.size() / RowSizeMax));
     PageNo = PageNo < PageMax ? PageNo : PageMax - 1;
@@ -116,7 +110,6 @@ namespace CycPop5
   }
   //ファイル収集、ページ更新
   void FolderInfo::Update() {
-    //Get file
     vector<wstring> fnames;
     HANDLE hFind;
     WIN32_FIND_DATA fd;
@@ -139,7 +132,7 @@ namespace CycPop5
       path.append(name);
       paths.push_back(path);
     }
-    FolderInfoBase::UpdateFileList(paths);
+    FolderInfoBase::UpdatePageList(paths);
   }
   //空フォルダのページを取得
   vector<wstring> FolderInfo::GetEmptyPage() {
@@ -153,7 +146,7 @@ namespace CycPop5
 
   /*
   フォルダ情報
-  FolderInfoに「フォルダの変更」機能を追加
+    FolderInfoに「フォルダの変更」機能を追加
   */
   class FolderInfo_CurrentPlay : public FolderInfo
   {
@@ -188,7 +181,7 @@ namespace CycPop5
 
   /*
   フォルダ情報
-  RecentPlay
+    RecentPlay
   */
   class FolderInfo_RecentPlay : public FolderInfo
   {
@@ -211,7 +204,7 @@ namespace CycPop5
     vector<wstring> v;
     for (wstring one : Recent)
       v.push_back(one);
-    FolderInfoBase::UpdateFileList(v);
+    FolderInfoBase::UpdatePageList(v);
   }
 
 
@@ -249,7 +242,7 @@ namespace CycPop5
 
 
 
-
+  //ポップアップメニュー用ＩＤ
   enum CycID {
     Cancel = 0,     //cancel menu
     NextFolder = 1, //next folder
@@ -258,8 +251,8 @@ namespace CycPop5
   };
 
   /*
-  //  ポップアップメニューでファイルを表示
-  //  フォルダ情報の管理、メニュー作成
+    ポップアップメニューでファイルを表示
+    フォルダ情報の管理、メニュー作成
   */
   class CyclePopMenu
   {
@@ -271,7 +264,7 @@ namespace CycPop5
     bool EnableCurrent, EnableRecent;
     shared_ptr<FolderInfo_RecentPlay> Folder_RecentPlay;
     shared_ptr<FolderInfo_CurrentPlay> Folder_CurPlay;
-    vector<fs::path> FileList;//ページのファイルパス一覧を一時保存
+    vector<fs::path> Page;//ポップアップメニューのファイルパスを一時保存
     /*
     MenuRowMax
       ポップアップメニューの段数
@@ -386,11 +379,11 @@ namespace CycPop5
     }
     else {
       //ファイルメニュー
-      FileList = fi->GetPageFile();
-      rows += FileList.size();
-      for (size_t i = 0; i < FileList.size(); i++) {
-        bool play_now = playing_path == FileList[i].wstring();
-        wstring line = FileList[i].filename();
+      Page = fi->GetPageFile();
+      rows += Page.size();
+      for (size_t i = 0; i < Page.size(); i++) {
+        bool play_now = playing_path == Page[i].wstring();
+        wstring line = Page[i].filename();
         if (60 < line.length())
           line = line.substr(0, 60) + L"...";
         line = regex_replace(line, wregex(L"&"), L"_");  // プレフィクス対策
@@ -407,8 +400,8 @@ namespace CycPop5
       }
     }
     //空行で埋める
-    size_t empty = MenuRowMax - rows;
-    for (size_t i = 0; i < fi->GetEmptyRowSize(); i++)
+    size_t space = MenuRowMax - rows;
+    for (size_t i = 0; i < space; i++)
       ::AppendMenu(hmenu, MF_DISABLED, CycID::Cancel, L"");
     //次ページへ
     if (fi->Has2ndPage()) {
@@ -422,12 +415,12 @@ namespace CycPop5
   //idからファイルパス取得
   wstring CyclePopMenu::GetSelectedFile(size_t id) const {
     id -= CycID::FileOffset;
-    if (Folder.empty() || FileList.empty())
+    if (Folder.empty() || Page.empty())
       return wstring();
-    else if (id < 0 || FileList.size() <= id)
+    else if (id < 0 || Page.size() <= id)
       return wstring();
 
-    return FileList[id];
+    return Page[id];
   }
 
 }
