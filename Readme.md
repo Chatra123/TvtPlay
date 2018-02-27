@@ -51,13 +51,18 @@ Button00=0,Width=36,ListPopup,OpenPopup
 起動時にPopupPatternを再生する。
 
 
-* ポップアップ用のフォルダを追加  
+* ポップアップメニューにフォルダを追加  
 TvtPlay.ini  
 PopupPattern=D:\Rec0\\\*.ts  
 PopupPattern1=E:\Rec1\\\*.ts  
 PopupPattern2=%RecordFolder%*.ts  
 を追加してください。
 
+*  ポップアップメニューに「最近再生したファイル」、「再生中のフォルダ」を追加
+TvtPlay.ini  
+CycPop_EnableCurrent=0
+CycPop_EnableRecent=0
+で無効にできます。
 
 * 従来よりもプラグイン、ドライバを自動で有効にする範囲を拡大し、  
   引数に.ts .tslistがあるだけで再生する。  
