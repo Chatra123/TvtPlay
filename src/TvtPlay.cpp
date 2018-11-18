@@ -1,5 +1,5 @@
 ﻿// TVTestにtsファイル再生機能を追加するプラグイン
-// 最終更新: 2016-09-09
+// 最終更新: 2018-02-22
 // 署名: 849fa586809b0d16276cd644c6749503
 #include <Windows.h>
 #include <WindowsX.h>
@@ -38,7 +38,7 @@ namespace CycPop = CycPop5;/*mod*/
 #define INFO_DESCRIPTION_SUFFIX L"+)"
 
 static const WCHAR INFO_PLUGIN_NAME[] = L"TvtPlay";
-static const WCHAR INFO_DESCRIPTION[] = L"ファイル再生機能を追加 (ver.2.4" INFO_DESCRIPTION_SUFFIX;
+static const WCHAR INFO_DESCRIPTION[] = L"ファイル再生機能を追加 (ver.2.5" INFO_DESCRIPTION_SUFFIX;
 static const int INFO_VERSION = 23;
 
 #define WM_UPDATE_STATUS    (WM_APP + 1)
@@ -141,7 +141,6 @@ CTvtPlay::CTvtPlay()
     , m_fIgnoreExt(false)
     , m_fAutoEnUdp(false)
     , m_fAutoEnPipe(false)
-    , m_fEventExecute(false)
     , m_fEventStartupDone(false)
     , m_fPausedOnPreviewChange(false)
     , m_specOffset(-1)
@@ -1769,13 +1768,19 @@ void CTvtPlay::SetupDestination()
             ::PostThreadMessage(m_threadID, WM_TS_SET_UDP, 0, 1234 + chInfo.Channel);
         }
     }
-    else if (!::lstrcmpi(name, TEXT("BonDriver_Pipe.dll"))) {
-        if (m_pApp->GetCurrentChannelInfo(&chInfo) && m_hThread) {
-            ::PostThreadMessage(m_threadID, WM_TS_SET_PIPE, 0, chInfo.Channel);
-        }
-    }
     else {
-        if (m_hThread) ::PostThreadMessage(m_threadID, WM_TS_SET_UDP, 0, -1);
+        TCHAR ordinal[20] = TEXT("BonDriver_Pipe0.dll");
+        if (::lstrcmpi(name, TEXT("BonDriver_Pipe.dll"))) {
+            for (; ordinal[14] <= TEXT('9') && ::lstrcmpi(name, ordinal); ++ordinal[14]);
+        }
+        if (ordinal[14] <= TEXT('9')) {
+            if (m_pApp->GetCurrentChannelInfo(&chInfo) && m_hThread) {
+                ::PostThreadMessage(m_threadID, WM_TS_SET_PIPE, 0, chInfo.Channel);
+            }
+        }
+        else {
+            if (m_hThread) ::PostThreadMessage(m_threadID, WM_TS_SET_UDP, 0, -1);
+        }
     }
 }
 
@@ -1968,7 +1973,18 @@ void CTvtPlay::EnablePluginByDriverName()
         // ドライバ名に応じて有効無効を切り替える
         bool fEnable = false;
         if (m_fAutoEnUdp && !::lstrcmpi(name, TEXT("BonDriver_UDP.dll"))) fEnable = true;
-        if (m_fAutoEnPipe && !::lstrcmpi(name, TEXT("BonDriver_Pipe.dll"))) fEnable = true;
+        if (m_fAutoEnPipe) {
+            if (!::lstrcmpi(name, TEXT("BonDriver_Pipe.dll"))) fEnable = true;
+            else {
+                TCHAR ordinal[20] = TEXT("BonDriver_Pipe0.dll");
+                for (; ordinal[14] <= TEXT('9'); ++ordinal[14]) {
+                    if (!::lstrcmpi(name, ordinal)) {
+                        fEnable = true;
+                        break;
+                    }
+                }
+            }
+        }
 
         if (m_pApp->IsPluginEnabled() != fEnable) m_pApp->EnablePlugin(fEnable);
     }
@@ -2544,7 +2560,6 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
         // 複数起動禁止時に複数起動された
         // ドライバ変更前に呼ばれるので、このあとEVENT_DRIVERCHANGEが呼ばれるかもしれない
         pThis->AnalyzeCommandLine(reinterpret_cast<LPCWSTR>(lParam1), false);
-        pThis->m_fEventExecute = true;
         // FALL THROUGH!
     case TVTest::EVENT_STARTUPDONE:
         {
