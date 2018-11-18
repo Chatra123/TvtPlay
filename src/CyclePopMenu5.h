@@ -134,7 +134,7 @@ namespace CycPop5
     }
     FolderInfoBase::UpdatePageList(paths);
   }
-  //空フォルダのページを取得
+  //空フォルダの表示を取得
   vector<wstring> FolderInfo::GetEmptyPage() {
     vector<wstring> text;
     text.push_back(Pattern);

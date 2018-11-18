@@ -330,49 +330,15 @@ void CPlaylist::ClearWithoutCurrent()
     }
 }
 
-//// 現在位置を前に移動する
-//// 移動できなければfalseを返す
-//bool CPlaylist::Prev(bool fLoop)
-//{
-//    if (fLoop && !m_list.empty() && m_pos == 0) {
-//        m_pos = m_list.size() - 1;
-//        return true;
-//    }
-//    else if (m_pos != 0) {
-//        --m_pos;
-//        return true;
-//    }
-//    return false;
-//}
-//
-//// 現在位置を次に移動する
-//// 移動できなければfalseを返す
-//bool CPlaylist::Next(bool fLoop)
-//{
-//  if (fLoop && !m_list.empty() && m_pos + 1 >= m_list.size()) {
-//    m_pos = 0;
-//    return true;
-//  }
-//  else if (m_pos+1 < m_list.size()) {
-//      ++m_pos;
-//      return true;
-//  }
-//  return false;
-//}
-
 
 //mod
-// 現在位置を前に移動する
-// 移動できなければfalseを返す
-//mod変更点
-// ファイルチェックを追加
+//  ファイルチェックを追加した
 bool CPlaylist::Prev(bool fLoop)
 {
   if (fLoop && !m_list.empty() && m_pos == 0) {
     m_pos = m_list.size() - 1;
     return true;
   }
-
   while (m_pos != 0)
   {
     --m_pos;
@@ -383,10 +349,7 @@ bool CPlaylist::Prev(bool fLoop)
 }
 
 //mod
-// 現在位置を次に移動する
-// 移動できなければfalseを返す
-//mod変更点
-// ファイルチェックを追加
+//  ファイルチェックを追加した
 bool CPlaylist::Next(bool fLoop)
 {
   if (fLoop && !m_list.empty() && m_pos + 1 >= m_list.size()) {
@@ -402,11 +365,6 @@ bool CPlaylist::Next(bool fLoop)
   }
   return false;
 }
-
-
-
-
-
 
 
 // 文字列として出力する

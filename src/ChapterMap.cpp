@@ -55,10 +55,7 @@ bool CChapterMap::Open(LPCTSTR path, LPCTSTR subDirName)
         // PathAddExtension()を使ってはいけない!
         len = ::wsprintf(chPath, TEXT("%s.chapter"), pathWoExt);
 
-        /* mod off */
-        //if (len <= _countof(ogmPath) - 4) ::wsprintf(ogmPath, TEXT("%s.txt"), chPath);
-        //if (len <= _countof(ogm2Path) - 5) ::wsprintf(ogm2Path, TEXT("%ss.txt"), chPath);
-        /* mod 変更点 */
+        /* mod */
         //%s.frame.txtを追加
         //  コード変更箇所を少なくするため、ogmPathをframePathの代用にする
         if (len <= _countof(ogmPath) - 10) ::wsprintf(ogmPath, TEXT("%s.frame.txt"), pathWoExt);
@@ -82,20 +79,12 @@ bool CChapterMap::Open(LPCTSTR path, LPCTSTR subDirName)
             len = ::lstrlen(subPathWoExt);
             if (len < _countof(subChPath) - 8) {
                 len = ::wsprintf(subChPath, TEXT("%s.chapter"), subPathWoExt);
-
-                /* mod off */
-                //if (len <= _countof(subOgmPath) - 4) ::wsprintf(subOgmPath, TEXT("%s.txt"), subChPath);
-                //if (len <= _countof(subOgm2Path) - 5) ::wsprintf(subOgm2Path, TEXT("%ss.txt"), subChPath);
-                /* mod */
                 if (len <= _countof(subOgmPath) - 10) ::wsprintf(subOgmPath, TEXT("%s.frame.txt"), pathWoExt);
             }
         }
     }
 
-    /* mod off */
-    //LPCTSTR chReadPath = subChPath[0] && ::PathFileExists(subChPath) ? subChPath :
-    //                     ::PathFileExists(chPath) ? chPath : NULL;
-    /* mod 変更点 */
+    /* mod */
     //  チャプターフォルダの*.chapterよりTSフォルダの*.frame.txtを優先する
     LPCTSTR chReadPath = chPath[0] && ::PathFileExists(chPath) ? chPath :
                          subChPath[0] && ::PathFileExists(subChPath) 
@@ -127,11 +116,6 @@ bool CChapterMap::Open(LPCTSTR path, LPCTSTR subDirName)
     else {
         m_fWritable = true;
         ::lstrcpy(m_path, subChPath[0] ? subChPath : chPath);
-        /* mod off */
-        //LPCTSTR ogmReadPath = subOgmPath[0] && ::PathFileExists(subOgmPath) ? subOgmPath :
-        //                      ogmPath[0] && ::PathFileExists(ogmPath) ? ogmPath :
-        //                      subOgm2Path[0] && ::PathFileExists(subOgm2Path) ? subOgm2Path :
-        //                      ogm2Path[0] && ::PathFileExists(ogm2Path) ? ogm2Path : NULL;
         /* mod */
         LPCTSTR ogmReadPath = ogmPath[0] && ::PathFileExists(ogmPath) ? ogmPath :
                               subOgmPath[0] && ::PathFileExists(subOgmPath) ? subOgmPath : NULL;
@@ -140,7 +124,6 @@ bool CChapterMap::Open(LPCTSTR path, LPCTSTR subDirName)
             // BOMがなければANSIコードページで読む
             std::vector<WCHAR> cmd = ReadUtfFileToEnd(ogmReadPath, FILE_SHARE_READ, true);
             if (!cmd.empty()) {
-                //InsertOgmStyleCommand(&cmd.front());
                 InsertFrameStyleCommand(&cmd.front());
             }
         }
@@ -458,7 +441,6 @@ bool CChapterMap::InsertFrameStyleCommand(LPCTSTR p)
       ++p;
     int msec = (int)(1.0 * frame / 29.970 * 1000);
     time.emplace_back(msec);
-
     //数字以外はとばす
     while (*p != NULL &&
       (*p < TEXT('0') || TEXT('9') < *p))

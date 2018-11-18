@@ -613,15 +613,9 @@ bool CTsSender::Seek(int msec)
     for (int i = 0; i < 5 && (msec < -5000 || 5000 < msec); i++) {
         if ((pos = m_reader.GetFilePosition()) < 0) return false;
 
-        //mod off
-        // 前方or後方にこれ以上シークできない場合
-        //if (msec < 0 && pos <= rate ||
-        //    msec > 0 && pos >= size - rate*2)
-        //  return true;
         //mod
         // 前方にこれ以上シークできない場合
         if (msec < 0 && pos <= rate) return true;
-
         __int64 approx = pos + rate * msec / 1000;
         if (approx > size - rate*2) approx = size - rate*2;
         if (approx < 0) approx = 0;
@@ -965,7 +959,6 @@ bool CTsSender::Seek(__int64 distanceToMove, IReadOnlyFile::MOVE_METHOD moveMeth
       }
     }
     if (fReadToEof) {
-    //if (ReadToPcr(120000, false, true) != 2) {
         // なるべく呼び出し前の状態に回復させるが、完全とは限らない
         if (m_file->SetPointer(lastPos, IReadOnlyFile::MOVE_METHOD_BEGIN) >= 0) {
             m_curr = m_head = m_tail = NULL;

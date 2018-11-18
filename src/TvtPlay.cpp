@@ -1112,102 +1112,6 @@ bool CTvtPlay::OpenWithPopup(const POINT &pt, UINT flags)
     return false;
 }
 
-
-
-//bool CTvtPlay::OpenWithPopup(const POINT &pt, UINT flags)
-//{
-//    if (m_popupMax <= 0) return false;
-//
-//    // 特定指示子をTVTestの保存先フォルダに置換する(手抜き)
-//    TCHAR pattern[MAX_PATH];
-//    if (!::StrCmpNI(m_szPopupPattern, TEXT("%RecordFolder%"), 14)) {
-//        if (m_pApp->GetSetting(L"RecordFolder", pattern, _countof(pattern)) <= 0) pattern[0] = 0;
-//        ::PathAppend(pattern, m_szPopupPattern + 14);
-//    }
-//    else {
-//        ::lstrcpy(pattern, m_szPopupPattern);
-//    }
-//
-//    // ファイルリスト取得
-//    std::vector<WIN32_FIND_DATA> findList;
-//    WIN32_FIND_DATA findData;
-//    HANDLE hFind = ::FindFirstFile(pattern, &findData);
-//    if (hFind != INVALID_HANDLE_VALUE) {
-//        findList.push_back(findData);
-//        for (int i = 0; i < POPUP_MAX_MAX; ++i) {
-//            if (!::FindNextFile(hFind, &findData)) break;
-//             findList.push_back(findData);
-//        }
-//        ::FindClose(hFind);
-//    }
-//    int listSize = static_cast<int>(findList.size());
-//
-//    // ファイル名を昇順or降順ソート
-//    std::vector<LPCTSTR> nameList(listSize);
-//    for (int i = 0; i < listSize; ++i) nameList[i] = findList[i].cFileName;
-//    std::sort(nameList.begin(), nameList.end(), [](LPCTSTR a, LPCTSTR b) { return ::lstrcmpi(a, b) < 0; });
-//    if (m_fPopupDesc) std::reverse(nameList.begin(), nameList.end());
-//
-//    // ポップアップしない部分をとばす
-//    int skipSize = max(listSize - m_popupMax, 0);
-//
-//    // メニュー生成
-//    int selID = 0;
-//    HMENU hmenu = ::CreatePopupMenu();
-//    if (hmenu) {
-//
-//        //mod
-//        //フォルダ名をリストの先頭に追加
-//        TCHAR folderName[MAX_PATH];
-//        ::lstrcpy(folderName, pattern);
-//        ::PathRemoveFileSpec(folderName);
-//        ::PathStripPath(folderName);
-//        if (hFind != INVALID_HANDLE_VALUE)
-//          ::AppendMenu(hmenu, MF_STRING | MF_GRAYED, 0, folderName);
-//
-//
-//        if (listSize <= 0) {
-//            ::AppendMenu(hmenu, MF_STRING | MF_GRAYED, 0, TEXT("(なし)"));
-//        }
-//        else {
-//            for (int i = 0; skipSize+i < listSize; ++i) {
-//                TCHAR str[64];
-//                ::lstrcpyn(str, nameList[skipSize+i], 64);
-//                if (::lstrlen(str) == 63) ::lstrcpy(&str[60], TEXT("..."));
-//                // プレフィクス対策
-//                for (LPTSTR p = str; *p; p++)
-//                    if (*p == TEXT('&')) *p = TEXT('_');
-//                ::AppendMenu(hmenu, MF_STRING, i + 1, str);
-//            }
-//            //mod
-//            //リストの最後に空行挿入
-//            //  - 空行を選択するとリストを非表示にできる。
-//            //  - ボタンを２回押したときにすぐにファイル選択をしないようにする。
-//            //    デスクトップ下部だとバーのボタンとリストが重なる。
-//            ::AppendMenu(hmenu, MF_STRING, 0, L"");
-//        }
-//        selID = TrackPopup(hmenu, pt, flags);
-//        ::DestroyMenu(hmenu);
-//    }
-//
-//    TCHAR fileName[MAX_PATH];
-//    if (selID > 0 && skipSize+selID-1 < listSize &&
-//        ::PathRemoveFileSpec(pattern) &&
-//        ::PathCombine(fileName, pattern, nameList[skipSize+selID-1])) {
-//        //return m_playlist.PushBackListOrFile(fileName, true) >= 0 ? OpenCurrent() : false;
-//        //mod
-//        return m_playlist.PushBackListOrFile_AutoPlay(fileName, true, true) >= 0 ? OpenCurrent() : false;
-//    }
-//    return false;
-//}
-
-
-
-
-
-
-
-
 // ポップアップメニュー選択で再生リストのファイルを開く
 bool CTvtPlay::OpenWithPlayListPopup(const POINT &pt, UINT flags)
 {
@@ -2459,16 +2363,6 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
         if (pThis->m_fEventStartupDone) {
             pThis->EnablePluginByDriverName();
         }
-
-        //mod off
-        //EVENT_STARTUPDONEでファイルを開くようにしたのでのでここはコメントアウト
-        //// コマンドラインにパスが指定されていれば開く
-        //if (pThis->m_pApp->IsPluginEnabled() && pThis->m_szSpecFileName[0]) {
-        //    if (pThis->m_playlist.PushBackListOrFile(pThis->m_szSpecFileName, true) >= 0) {
-        //        pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
-        //    }
-        //    pThis->m_szSpecFileName[0] = 0;
-        //}
         //mod
         //ドライバが変更された
         {
@@ -2549,44 +2443,25 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
               pThis->m_fEventStartupDone = true;
           }
 
-          // mod off
-          //pThis->EnablePluginByDriverName();
-          //  if (pThis->m_pApp->IsPluginEnabled()) {
-          //    // コマンドラインにパスが指定されていれば開く
-          //    if (pThis->m_szSpecFileName[0]) {
-          //      if (pThis->m_playlist.PushBackListOrFile(pThis->m_szSpecFileName, true) >= 0) {
-          //        pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
-          //      }
-          //      pThis->m_szSpecFileName[0] = 0;
-          //    }
-
-          //    // 起動時フリーズ対策(仮)
-          //    if (pThis->m_fRaisePriority && pThis->m_pApp->GetVersion() < TVTest::MakeVersion(0, 8, 1)) {
-          //      ::SetThreadPriority(::GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
-          //    }
-          //  }
-
-
           //mod 
           /*
-           - パスがあればAnalyzeCommandLine()関数内で m_fForceEnable = true になっている。
+           - 引数にパスがあればAnalyzeCommandLine()関数内で m_fForceEnable = true になっている。
            - case TVTest::EVENT_EXECUTE:から FALL THROUGH!でも実行されるので多重起動禁止の
              TVTestから送られてくるコマンドラインも処理される。
-           mod 追加
-           - 引数 TvtpAutoPlay
+           - 引数 TvtpAutoPlayの処理
           */
          pThis->m_HaltCount_SetAlwaysOnTop = 0;//起動時に1なのでリセット
          pThis->m_HaltCount_SetAlwaysOnTop++;
          bool isOpen = false;
           //再生
-          // 引数 ファイルパス
+          // 引数のファイルパス
           if (pThis->m_fForceEnable && pThis->m_szSpecFileName[0]) {
               if (pThis->m_playlist.PushBackListOrFile_AutoPlay(pThis->m_szSpecFileName, true, true) >= 0) {
                 isOpen = pThis->OpenCurrent(pThis->m_specOffset, pThis->m_specStretchID);
               }
               pThis->m_szSpecFileName[0] = 0;
           }
-          // 引数 TvtpAutoPlay
+          //TvtpAutoPlay
           else if (pThis->m_fAutoPlay) {
             pThis->m_fAutoPlay = false;
             pThis->LoadSettings();// get m_szPopupPattern from ini
@@ -2659,7 +2534,6 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
                   info.State = 0;
                   pThis->m_pApp->SetStatusItem(&info);
                   /*
-                  mod memo 
                   　表示状態のままだと前回のウィンドウサイズよりもステータスバーの高さ分小さくなる。
                     いったん非表示にし、TVTest::EVENT_STARTUPDONEの最後で表示している。
                   */
@@ -2729,31 +2603,20 @@ BOOL CALLBACK CTvtPlay::WindowMsgCallback(HWND hwnd, UINT uMsg, WPARAM wParam, L
             TCHAR fileName[MAX_PATH];
             int num = ::DragQueryFile((HDROP)wParam, 0xFFFFFFFF, fileName, _countof(fileName));
 
-
-            //mod off
-            //for (int i = 0; i < num; ++i) {
-            //  if (::DragQueryFile((HDROP)wParam, i, fileName, _countof(fileName)) != 0 &&
-            //    (CPlaylist::IsPlayListFile(fileName) || CPlaylist::IsMediaFile(fileName)))
-            //  {
-            //    if (pThis->m_playlist.PushBackListOrFile(fileName, !fAdded) >= 0) fAdded = true;
-            //  }
-            //}
-
             //mod
-            //dropされたファイルのチェック
+            //dropされたファイル数のチェック
             int media_num = 0;
             for (int i = 0; i < num; ++i) {
               if (::DragQueryFile((HDROP)wParam, i, fileName, _countof(fileName)) != 0 &&
                 CPlaylist::IsMediaFile(fileName)) {
                 media_num++;
               }
-            }
-            
+            }            
             for (int i = 0; i < num; ++i) {
               if (::DragQueryFile((HDROP)wParam, i, fileName, _countof(fileName)) != 0 &&
                 (CPlaylist::IsPlayListFile(fileName) || CPlaylist::IsMediaFile(fileName))) {
-                //　mediaが１つ   -->  フォルダ内のファイル収集
-                //  複数 or list  -->  ドロップされたファイルのみ追加
+                //　media_num==1  -->  フォルダ内のファイル収集
+                //  複数 or list  -->  ドロップされた複数ファイルを追加
                 if (media_num == 1) {
                   if (pThis->m_playlist.PushBackListOrFile_AutoPlay(fileName, !fAdded, true) >= 0)
                     fAdded = true;
