@@ -2459,26 +2459,6 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
         if (pThis->m_fEventStartupDone) {
             pThis->EnablePluginByDriverName();
         }
-        // 複数禁止起動時にチャンネル設定されない場合の対策(ver.0.7.22未満)
-        if (pThis->m_fEventExecute &&
-            pThis->m_pApp->GetVersion() < TVTest::MakeVersion(0,7,22)) {
-            TCHAR path[MAX_PATH];
-            pThis->m_pApp->GetDriverName(path, _countof(path));
-            LPCTSTR name = ::PathFindFileName(path);
-
-            if (pThis->m_pApp->IsPluginEnabled() &&
-                (!::lstrcmpi(name, TEXT("BonDriver_UDP.dll")) ||
-                !::lstrcmpi(name, TEXT("BonDriver_Pipe.dll")))) {
-                TVTest::ChannelInfo chInfo;
-                if (!pThis->m_pApp->GetCurrentChannelInfo(&chInfo)) {
-                    pThis->m_pApp->AddLog(L"SetChannel");
-                    for (int ch=0; ch < 10; ch++) {
-                        if (pThis->m_pApp->SetChannel(0, ch)) break;
-                    }
-                }
-            }
-        }
-        pThis->m_fEventExecute = false;
 
         //mod off
         //EVENT_STARTUPDONEでファイルを開くようにしたのでのでここはコメントアウト
