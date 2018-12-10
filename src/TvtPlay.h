@@ -100,7 +100,6 @@ private:
     bool m_fIsPause_byDriverChanged;
     bool m_fAutoPlay;
     CycPop::CyclePopMenu m_cyclePop;
-    CycPop::RecentList m_recentList;
     TCHAR m_szPopupPattern1[MAX_PATH];
     TCHAR m_szPopupPattern2[MAX_PATH];
     int m_CycPop_LastSelect;
