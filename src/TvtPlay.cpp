@@ -236,10 +236,7 @@ bool CTvtPlay::GetPluginInfo(TVTest::PluginInfo *pInfo)
 {
     // プラグインの情報を返す
     pInfo->Type           = TVTest::PLUGIN_TYPE_NORMAL;
-    /*
-    mod
-    DISABLEONSTARTをはずした
-    */
+
     //pInfo->Flags          = TVTest::PLUGIN_FLAG_DISABLEONSTART;
     pInfo->pszPluginName  = INFO_PLUGIN_NAME;
     pInfo->pszCopyright   = L"Public Domain";
@@ -310,12 +307,10 @@ bool CTvtPlay::Initialize()
     if (!::GetModuleFileName(g_hinstDLL, m_szIniFileName, _countof(m_szIniFileName)) ||
         !::PathRenameExtension(m_szIniFileName, TEXT(".ini"))) return false;
 
-    //mod 
     //TVTestにドロップ受け入れ
     //プラグイン有効、無効に関係なく受け入れる
     ::DragAcceptFiles(m_pApp->GetAppWindow(), TRUE);
     m_pApp->SetWindowMessageCallback(WindowMsgCallback, this);
-
 
     // コマンドを登録
     m_pApp->RegisterCommand(COMMAND_LIST, _countof(COMMAND_LIST));
@@ -790,8 +785,6 @@ bool CTvtPlay::InitializePlugin()
     }
     ::DeleteDC(hdcMem);
 
-    //mod off
-    //::DragAcceptFiles(m_pApp->GetAppWindow(), TRUE);
     /* mod */
     //RecentPlay
     //ポップアップ用のフォルダを追加
@@ -854,13 +847,8 @@ bool CTvtPlay::EnablePlugin(bool fEnable) {
         }
 #endif
         if (m_fShowOpenDialog && !m_szSpecFileName[0] && !m_pApp->GetStandby()) OpenWithDialog();
-
-        ////mod off
-        //m_pApp->SetWindowMessageCallback(WindowMsgCallback, this);
     }
     else {
-        ////mod off
-        //m_pApp->SetWindowMessageCallback(NULL, NULL);
         Close();
 #ifdef EN_SWC
         if (m_captionAnalyzer.IsInitialized()) {
@@ -885,14 +873,13 @@ bool CTvtPlay::EnablePlugin(bool fEnable) {
         }
     }
 
-    //mod
-    //AlwaysOnTop
+    /*AlwaysOnTop*/
     /*
       m_fHasBackup_AlwaysOnTop   TVTest側のAlwaysOnTopを保存したか？
       m_fBackup_AlwaysOnTop      TVTest側のAlwaysOnTop
     */
     if (fEnable) {
-      //最前面　TVTest側の設定を保存
+      /*最前面　TVTest側の設定を保存*/
       if (m_fHasBackup_AlwaysOnTop == false) {
         m_fBackup_AlwaysOnTop = m_pApp->GetAlwaysOnTop();
         m_fHasBackup_AlwaysOnTop = true;
@@ -900,7 +887,7 @@ bool CTvtPlay::EnablePlugin(bool fEnable) {
       SetAlwaysOnTop(false);
     }
     else {
-      //最前面　TVTest側の設定に戻す
+      /*最前面　TVTest側の設定に戻す*/
       if (m_fHasBackup_AlwaysOnTop) {
         SetAlwaysOnTop(m_fBackup_AlwaysOnTop);
         m_fHasBackup_AlwaysOnTop = false;
@@ -1121,16 +1108,11 @@ bool CTvtPlay::OpenWithPlayListPopup(const POINT &pt, UINT flags)
     if (hTopMenu) {
         HMENU hmenu;
         if (m_playlist.Get().empty()) {
-
-            //mod
             hmenu = ::CreatePopupMenu();
             ::AppendMenu(hmenu, MF_STRING | MF_GRAYED, 0, L"[ Playlist ]");
             ::AppendMenu(hmenu, MF_STRING | MF_GRAYED, 0, L"  no file");
         }
         else {
-
-            //mod
-            //プレイリスト操作のコマンドはメニューから除去
             hmenu = ::CreatePopupMenu();
             ::AppendMenu(hmenu, MF_STRING | MF_GRAYED, 0, L"[ Playlist ]");
 
@@ -1150,11 +1132,8 @@ bool CTvtPlay::OpenWithPlayListPopup(const POINT &pt, UINT flags)
                 mi.fState = cmdID-1==(int)m_playlist.GetPosition() ? MFS_DEFAULT | MFS_CHECKED : 0;
                 mi.fType = MFT_STRING | MFT_RADIOCHECK;
                 mi.dwTypeData = str;
-
-                //mod 
                 ::InsertMenuItem(hmenu, cmdID, TRUE, &mi);
             }
-            //mod
             //空行挿入
             ::AppendMenu(hmenu, MF_STRING, 0, L"");
         }
@@ -1457,9 +1436,6 @@ int CTvtPlay::TrackPopup(HMENU hmenu, const POINT &pt, UINT flags)
 // プレイリストの現在位置のファイルを開く
 bool CTvtPlay::OpenCurrent(int offset, int stretchID)
 {
-  //return !m_playlist.Get().empty() ? Open(m_playlist.Get()[m_playlist.GetPosition()].path, offset, stretchID) : false;
-
-  //mod
   if (!m_playlist.Get().empty()) {
     m_HaltCount_SetAlwaysOnTop++;
     ForceEnablePlugin();
@@ -1473,11 +1449,9 @@ bool CTvtPlay::OpenCurrent(int offset, int stretchID)
 
 bool CTvtPlay::Open(LPCTSTR fileName, int offset, int stretchID)
 {
-
-    m_HaltCount_SetAlwaysOnTop++;    //mod
+    m_HaltCount_SetAlwaysOnTop++;
     Close();
     m_HaltCount_SetAlwaysOnTop--;
-
 
     if (!m_tsSender.Open(fileName, m_salt, m_readBufSizeKB*1024, m_fConvTo188, m_fUnderrunCtrl, m_fUseQpc, m_pcrThresholdMsec)) return false;
 
@@ -1651,8 +1625,6 @@ void CTvtPlay::Close()
         // 再生情報を初期化する
         UpdateInfos();
         m_pApp->StatusItemNotify(1, TVTest::STATUS_ITEM_NOTIFY_REDRAW);
-
-        //mod
         SetAlwaysOnTop(false, true);
     }
 }
@@ -1703,15 +1675,12 @@ void CTvtPlay::WaitAndPostToSender(UINT Msg, WPARAM wParam, LPARAM lParam, bool 
 void CTvtPlay::Pause(bool fPause)
 {
     WaitAndPostToSender(WM_TS_PAUSE, fPause, 0, false);
-
-    //mod
     SetAlwaysOnTop(!fPause, true);
 }
 
 
 void CTvtPlay::SeekToBegin()
 {
-  //mod
   //０秒にシークしたときにスキップ処理を適用する。
   if (m_fSkipXChapter && !m_chapter.Get().empty())
   {
@@ -1820,8 +1789,6 @@ void CTvtPlay::BeginWatchingNextChapter(bool fDoDelay)
             // 直近の終了チャプターかスキップ開始チャプターを監視する
             // 監視位置は必ずposより大きくする(でないと即座にWM_SATISFIED_POS_GTが呼ばれてしまう)
             int pos = GetPosition();
-
-            //mod
             //０秒にシークしたときにスキップ処理を適用する。
             //　０秒にシークするとpos=1300が返されるので c-0dix- が処理できない。
             //　2000以下に最初のスキップがあれば適用し、
@@ -1894,7 +1861,6 @@ void CTvtPlay::EnablePluginByDriverName()
     }
 }
 
-//mod
 //プラグイン、ドライバを強制有効化
 void CTvtPlay::ForceEnablePlugin()
 {
@@ -1977,7 +1943,6 @@ void CTvtPlay::OnPreviewChange(bool fPreview)
 
 void CTvtPlay::OnCommand(int id, const POINT *pPt, UINT flags)
 {
-  //mod
   //地上波を視聴中にTvtpが動作するのを抑止
   //  Tvtp用Driverでない場合はopen,close以外のコマンドを無視する。
   //  ただし、シークバーのクリックは動作してしまう。
@@ -2069,31 +2034,8 @@ void CTvtPlay::OnCommand(int id, const POINT *pPt, UINT flags)
         else SeekToEnd();
         break;
 
-    //mod off
-    ////case ID_COMMAND_SEEK_PREV:
-    ////  if (!m_chapter.Get().empty()) {
-    ////    int pos = GetPosition();
-    ////    if (pos >= 3000) {
-    ////      // 再生中の連続ジャンプを考慮して多めに戻す
-    ////      std::map<int, CChapterMap::CHAPTER>::const_iterator it = m_chapter.Get().lower_bound(pos - 3000);
-    ////      if (it != m_chapter.Get().begin()) SeekAbsolute((--it)->first);
-    ////    }
-    ////  }
-    ////  break;
-
-    ////case ID_COMMAND_SEEK_NEXT:
-    ////  if (!m_chapter.Get().empty()) {
-    ////    int pos = GetPosition();
-    ////    if (pos >= 0) {
-    ////      std::map<int, CChapterMap::CHAPTER>::const_iterator it = m_chapter.Get().lower_bound(pos + 1000);
-    ////      if (it != m_chapter.Get().end()) SeekAbsolute(it->first);
-    ////    }
-    ////  }
-    ////  break;
-
-    //mod
     //前の本編開始チャプターへシーク
-    case ID_COMMAND_SEEK_PREV://ID_COMMAND_SEEK_PREV_MAIN
+    case ID_COMMAND_SEEK_PREV:
       if (!m_chapter.Get().empty()) {
         int pos = GetPosition();
         if (pos >= 3000) {
@@ -2117,9 +2059,8 @@ void CTvtPlay::OnCommand(int id, const POINT *pPt, UINT flags)
       }
       break;
 
-    //mod
     //次の本編開始チャプターへシーク
-    case ID_COMMAND_SEEK_NEXT://ID_COMMAND_SEEK_NEXT_MAIN
+    case ID_COMMAND_SEEK_NEXT:
       if (!m_chapter.Get().empty()) {
         int pos = GetPosition();
         if (pos >= 0) {
@@ -2140,9 +2081,7 @@ void CTvtPlay::OnCommand(int id, const POINT *pPt, UINT flags)
       }
       break;
 
-
-    //mod
-    case ID_COMMAND_SEEK_A://ID_COMMAND_SEEK_NEXT_MAIN_TYPE2
+    case ID_COMMAND_SEEK_A:/*新しいコマンドはつくらずSeekAを置き換えた*/
       /*
         基本は＋１０秒シーク、スキップチャプター直前はスキップ
 
@@ -2165,7 +2104,6 @@ void CTvtPlay::OnCommand(int id, const POINT *pPt, UINT flags)
       if (!m_chapter.Get().empty() && m_fSkipXChapter) {
         int pos = GetPosition();
         if (pos >= 0) {
-
           //次のチャプター情報
           bool nextIs_cix = false, nextIs_cox = false;
           int len_toNextIn = -1;
@@ -2177,7 +2115,6 @@ void CTvtPlay::OnCommand(int id, const POINT *pPt, UINT flags)
               nextIs_cix = it->second.IsIn();
               len_toNextIn = nextIs_cix ? it->first - pos : -1;
             }
-
             //次のスキップ先取得（本編開始チャプター）
             pos_next_cox = pos + 10 * 1000;
             for (;;) {
@@ -2187,7 +2124,6 @@ void CTvtPlay::OnCommand(int id, const POINT *pPt, UINT flags)
               else ++it;
             }
           }
-
           //直前のチャプター情報
           bool prevIs_cox = false;
           int len_fromPrevOut = -1;
@@ -2363,7 +2299,7 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
         if (pThis->m_fEventStartupDone) {
             pThis->EnablePluginByDriverName();
         }
-        //mod
+
         //ドライバが変更された
         {
           //BonDriver_Pipe以外に変更された
@@ -2443,7 +2379,6 @@ LRESULT CALLBACK CTvtPlay::EventCallback(UINT Event, LPARAM lParam1, LPARAM lPar
               pThis->m_fEventStartupDone = true;
           }
 
-          //mod 
           /*
            - 引数にパスがあればAnalyzeCommandLine()関数内で m_fForceEnable = true になっている。
            - case TVTest::EVENT_EXECUTE:から FALL THROUGH!でも実行されるので多重起動禁止の
@@ -2603,7 +2538,6 @@ BOOL CALLBACK CTvtPlay::WindowMsgCallback(HWND hwnd, UINT uMsg, WPARAM wParam, L
             TCHAR fileName[MAX_PATH];
             int num = ::DragQueryFile((HDROP)wParam, 0xFFFFFFFF, fileName, _countof(fileName));
 
-            //mod
             //dropされたファイル数のチェック
             int media_num = 0;
             for (int i = 0; i < num; ++i) {
@@ -2686,7 +2620,7 @@ LRESULT CALLBACK CTvtPlay::FrameWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
             pThis->BeginWatchingNextChapter(false);
             return 0;
 
-        case TIMER_ID_ALWAYS_ON_TOP:/* mod */
+        case TIMER_ID_ALWAYS_ON_TOP:
           {
             ::KillTimer(hwnd, TIMER_ID_ALWAYS_ON_TOP);
             pThis->SetAlwaysOnTop(pThis->m_fAlwaysOnTop, false);
