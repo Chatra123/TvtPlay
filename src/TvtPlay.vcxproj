@@ -99,6 +99,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;TVTPLAY_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>4100</DisableSpecificWarnings>
       <EnableEnhancedInstructionSet Condition="'$(VisualStudioVersion)' == '14.0'">NoExtensions</EnableEnhancedInstructionSet>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -135,6 +136,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;TVTPLAY_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>4100</DisableSpecificWarnings>
       <EnableEnhancedInstructionSet Condition="'$(VisualStudioVersion)' == '14.0'">NoExtensions</EnableEnhancedInstructionSet>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -170,13 +172,15 @@
     <ClInclude Include="BufferedFileReader.h" />
     <ClInclude Include="CaptionAnalyzer.h" />
     <ClInclude Include="ChapterMap.h" />
-    <ClInclude Include="CyclePopMenu5.h" />
-    <ClInclude Include="CyclePopMenu6.h" />
     <ClInclude Include="DrawUtil.h" />
+    <ClInclude Include="Sn_CyclePopMenu6.h" />
+    <ClInclude Include="Sn_DrawOnSeekBar.h" />
+    <ClInclude Include="Sn_PopupOnSeekBar.h" />
     <ClInclude Include="Playlist.h" />
     <ClInclude Include="ReadOnlyFile.h" />
     <ClInclude Include="ReadOnlyMpeg4File.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="Sn_ChapterOnSeekBar.h" />
     <ClInclude Include="TvtPlayUtil.h" />
     <ClInclude Include="StatusView.h" />
     <ClInclude Include="TsSender.h" />
@@ -192,6 +196,7 @@
     <ClCompile Include="Playlist.cpp" />
     <ClCompile Include="ReadOnlyFile.cpp" />
     <ClCompile Include="ReadOnlyMpeg4File.cpp" />
+    <ClCompile Include="Sn_TvtPlayUtil.cpp" />
     <ClCompile Include="TvtPlayUtil.cpp" />
     <ClCompile Include="StatusView.cpp" />
     <ClCompile Include="TsSender.cpp">

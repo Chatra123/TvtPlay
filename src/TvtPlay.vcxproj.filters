@@ -63,11 +63,17 @@
     <ClInclude Include="ReadOnlyMpeg4File.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="CyclePopMenu5.h">
+    <ClInclude Include="Sn_ChapterOnSeekBar.h">
+      <Filter>ヘッダー ファイル\TVTestStatusView</Filter>
+    </ClInclude>
+    <ClInclude Include="Sn_DrawOnSeekBar.h">
+      <Filter>ヘッダー ファイル\TVTestStatusView</Filter>
+    </ClInclude>
+    <ClInclude Include="Sn_CyclePopMenu6.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="CyclePopMenu6.h">
-      <Filter>ヘッダー ファイル</Filter>
+    <ClInclude Include="Sn_PopupOnSeekBar.h">
+      <Filter>ヘッダー ファイル\TVTestStatusView</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -105,6 +111,9 @@
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="ReadOnlyMpeg4File.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="Sn_TvtPlayUtil.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
   </ItemGroup>
